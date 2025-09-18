@@ -205,50 +205,59 @@ def save_response(response_data):
 def create_drag_drop_ranking(clip_id):
     """Create drag and drop ranking interface using streamlit-sortables"""
     st.markdown("**Which of the following features do you think influenced your opinion the most?**")
-    st.markdown("*Drag and drop to rank from most influential (top) to least influential (bottom):*")
+    st.markdown("*Drag and drop to rearrange from most influential (top) to least influential (bottom):*")
     
-    # Initialize session state for this clip's ranking if not exists
-    ranking_key = f"ranking_{clip_id}"
-    if ranking_key not in st.session_state:
-        st.session_state[ranking_key] = LINGUISTIC_FEATURES.copy()
-    
-    # Create the sortable list
+    # Use streamlit-sortables for drag and drop
     try:
         sorted_items = sort_items(
-            st.session_state[ranking_key],
+            LINGUISTIC_FEATURES,
             direction="vertical",
-            key=f"sortable_{clip_id}"
+            key=f"sortable_{clip_id}",
+            multi_containers=False
         )
         
-        # Update session state with new order
-        st.session_state[ranking_key] = sorted_items
-        
-        # Display current ranking
-        st.markdown("**Current Ranking (Top = Most Influential):**")
+        # Display current ranking with emphasis on top 2
+        st.markdown("**Your Current Ranking:**")
         for i, item in enumerate(sorted_items):
-            st.markdown(f"{i+1}. {item}")
+            if i < 2:
+                st.markdown(f"🏆 **{i+1}. {item}** *(will get follow-up questions)*")
+            else:
+                st.markdown(f"{i+1}. {item}")
         
         # Convert to ranking dictionary for processing
         ranking_dict = {}
         for i, feature in enumerate(sorted_items):
             ranking_dict[feature] = i + 1  # 1 = most influential
         
-        return ranking_dict
+        return ranking_dict, sorted_items[:2]  # Return top 2 features
         
     except Exception as e:
-        st.error(f"Drag-and-drop interface failed: {e}")
-        st.markdown("**Fallback: Manual Ranking**")
+        st.error(f"Drag-and-drop failed: {e}")
+        st.markdown("**Using manual ranking instead:**")
         
-        # Fallback manual ranking system
-        ranking_options = {}
-        for feature in LINGUISTIC_FEATURES:
-            ranking_options[feature] = st.selectbox(
-                f"Rank for {feature} (1=Most influential, 5=Least influential)",
-                options=[1, 2, 3, 4, 5],
-                key=f"manual_rank_{clip_id}_{feature.replace(' ', '_').lower()}"
-            )
+        # Simple fallback - just ask for top 2 most influential
+        st.markdown("Please select your **top 2 most influential** features:")
         
-        return ranking_options
+        first_choice = st.selectbox(
+            "Most influential feature:",
+            options=LINGUISTIC_FEATURES,
+            key=f"first_choice_{clip_id}"
+        )
+        
+        remaining_features = [f for f in LINGUISTIC_FEATURES if f != first_choice]
+        second_choice = st.selectbox(
+            "Second most influential feature:",
+            options=remaining_features,
+            key=f"second_choice_{clip_id}"
+        )
+        
+        # Create a simple ranking dict for compatibility
+        ranking_dict = {first_choice: 1, second_choice: 2}
+        for i, feature in enumerate(LINGUISTIC_FEATURES):
+            if feature not in ranking_dict:
+                ranking_dict[feature] = i + 3
+        
+        return ranking_dict, [first_choice, second_choice]
 
 def display_results():
     """Display survey results with charts"""
@@ -520,7 +529,9 @@ def show_ranking_interface():
     st.subheader(f"🎯 Feature Ranking - {AUDIO_CLIPS[current_clip_id]['title']}")
     
     # Create the drag-drop interface
-    ranking_dict = create_drag_drop_ranking(current_clip_id)
+    ranking_dict, top_2_features = create_drag_drop_ranking(current_clip_id)
+    
+    st.info("📋 You will be asked follow-up questions about your **top 2** most influential features.")
     
     st.markdown("---")
     
@@ -533,51 +544,69 @@ def show_ranking_interface():
     
     with col2:
         if st.button("Continue to Follow-up →", type="primary", key="continue_to_followup"):
-            # For streamlit-sortables, we don't need to validate uniqueness as it's automatic
-            # But for manual fallback, we do
-            if isinstance(ranking_dict, dict) and len(set(ranking_dict.values())) != len(ranking_dict.values()):
-                st.error("Please ensure each feature has a unique ranking (1-5).")
-            else:
-                # Save rankings
-                for feature, rank in ranking_dict.items():
-                    st.session_state.current_responses[f"{current_clip_id}_ranking_{feature.replace(' ', '_').lower()}"] = rank
-                
-                # Find most influential feature (lowest rank number = position 1)
-                most_influential = min(ranking_dict, key=ranking_dict.get)
-                st.session_state.current_responses[f"{current_clip_id}_most_influential"] = most_influential
-                st.session_state.survey_step = 'follow_up'
-                st.rerun()
+            # Save rankings
+            for feature, rank in ranking_dict.items():
+                st.session_state.current_responses[f"{current_clip_id}_ranking_{feature.replace(' ', '_').lower()}"] = rank
+            
+            # Save top 2 features for follow-up questions
+            st.session_state.current_responses[f"{current_clip_id}_top_features"] = top_2_features
+            st.session_state.survey_step = 'follow_up'
+            st.rerun()
 
 def show_follow_up_questions():
-    """Show follow-up questions based on most influential feature"""
+    """Show follow-up questions based on top 2 most influential features"""
     clip_ids = list(AUDIO_CLIPS.keys())
     current_clip_id = clip_ids[st.session_state.current_clip]
-    most_influential = st.session_state.current_responses.get(f"{current_clip_id}_most_influential")
+    top_features = st.session_state.current_responses.get(f"{current_clip_id}_top_features", [])
     
-    if most_influential and most_influential in FOLLOW_UP_QUESTIONS:
+    if top_features and len(top_features) >= 2:
         st.markdown(f'<div class="follow-up-section">', unsafe_allow_html=True)
-        st.subheader(f"📋 Follow-up Questions about {most_influential}")
-        st.markdown(f"Since you ranked **{most_influential}** as the most influential feature, please answer these specific questions:")
+        st.subheader(f"📋 Follow-up Questions")
+        st.markdown(f"You ranked **{top_features[0]}** and **{top_features[1]}** as your most influential features. Please answer these specific questions:")
         st.markdown('</div>', unsafe_allow_html=True)
         
         with st.form(f"followup_form_{current_clip_id}"):
             follow_up_responses = {}
             
-            for question in FOLLOW_UP_QUESTIONS[most_influential]:
-                if question['type'] == 'radio':
-                    response = st.radio(
-                        question['text'],
-                        options=question['options'],
-                        key=f"{current_clip_id}_followup_{question['id']}"
-                    )
-                elif question['type'] == 'text':
-                    response = st.text_area(
-                        question['text'],
-                        key=f"{current_clip_id}_followup_{question['id']}",
-                        placeholder="Please share your thoughts..."
-                    )
-                
-                follow_up_responses[f"{current_clip_id}_followup_{question['id']}"] = response
+            # Questions for first most influential feature
+            if top_features[0] in FOLLOW_UP_QUESTIONS:
+                st.markdown(f"### Questions about **{top_features[0]}** (Most Influential)")
+                for question in FOLLOW_UP_QUESTIONS[top_features[0]]:
+                    if question['type'] == 'radio':
+                        response = st.radio(
+                            question['text'],
+                            options=question['options'],
+                            key=f"{current_clip_id}_followup_1st_{question['id']}"
+                        )
+                    elif question['type'] == 'text':
+                        response = st.text_area(
+                            question['text'],
+                            key=f"{current_clip_id}_followup_1st_{question['id']}",
+                            placeholder="Please share your thoughts..."
+                        )
+                    
+                    follow_up_responses[f"{current_clip_id}_followup_1st_{question['id']}"] = response
+            
+            st.markdown("---")
+            
+            # Questions for second most influential feature
+            if top_features[1] in FOLLOW_UP_QUESTIONS:
+                st.markdown(f"### Questions about **{top_features[1]}** (Second Most Influential)")
+                for question in FOLLOW_UP_QUESTIONS[top_features[1]]:
+                    if question['type'] == 'radio':
+                        response = st.radio(
+                            question['text'],
+                            options=question['options'],
+                            key=f"{current_clip_id}_followup_2nd_{question['id']}"
+                        )
+                    elif question['type'] == 'text':
+                        response = st.text_area(
+                            question['text'],
+                            key=f"{current_clip_id}_followup_2nd_{question['id']}",
+                            placeholder="Please share your thoughts..."
+                        )
+                    
+                    follow_up_responses[f"{current_clip_id}_followup_2nd_{question['id']}"] = response
             
             col1, col2 = st.columns([1, 1])
             
