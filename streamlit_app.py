@@ -123,11 +123,38 @@ if 'ranking_complete' not in st.session_state:
 # Clean CSS for better styling
 st.markdown("""
 <style>
+    /* Increase overall font size */
+    .main .block-container {
+        font-size: 1.2rem;
+    }
+    
+    /* Larger headers */
     .main-header {
-        font-size: 2.5rem;
+        font-size: 3rem;
         color: #64B5F6;
         text-align: center;
         margin-bottom: 1rem;
+    }
+    
+    /* Larger subheaders */
+    h2, h3 {
+        font-size: 1.5rem !important;
+    }
+    
+    /* Larger radio button text */
+    .stRadio > div {
+        font-size: 1.1rem !important;
+    }
+    
+    /* Larger form labels */
+    .stSelectbox > label, .stSlider > label, .stRadio > label, .stTextInput > label {
+        font-size: 1.2rem !important;
+        font-weight: 600 !important;
+    }
+    
+    /* Larger markdown text */
+    .stMarkdown p {
+        font-size: 1.1rem !important;
     }
     
     .audio-section {
@@ -136,6 +163,7 @@ st.markdown("""
         border-radius: 10px;
         border-left: 4px solid #64B5F6;
         margin: 1rem 0;
+        font-size: 1.1rem;
     }
     
     .follow-up-section {
@@ -144,6 +172,7 @@ st.markdown("""
         border-radius: 10px;
         border-left: 4px solid #F59E0B;
         margin: 1rem 0;
+        font-size: 1.1rem;
     }
     
     .section-divider {
@@ -167,7 +196,7 @@ FEATURE_EXPLANATIONS = {
     "Rate of speech": "The speed at which the speaker talks (fast, slow, or moderate pace)",
     "Tone": "The emotional quality or attitude in the speaker's voice (formal, casual, confident, etc.)",
     "Inflection": "The rise and fall of the voice within individual words or phrases",
-    "Intonation": "The overall melody or musical pattern of speech across sentences",
+    "Intonation": "The rise and fall of the voice across sentences"
     "Stress": "The emphasis placed on certain words or syllables to highlight important information"
 }
 
@@ -183,7 +212,8 @@ FOLLOW_UP_QUESTIONS = {
         {
             "id": "urgency_perception", 
             "text": "How did the speaking speed affect your perception of urgency?",
-            "type": "text"
+            "type": "radio",
+            "options": ["Made it feel very urgent", "Made it feel somewhat urgent", "No effect on urgency", "Made it feel less urgent", "Made it feel very relaxed"]
         }
     ],
     "Tone": [
@@ -210,7 +240,8 @@ FOLLOW_UP_QUESTIONS = {
         {
             "id": "inflection_understanding",
             "text": "How did the inflection patterns affect your understanding?",
-            "type": "text"
+            "type": "radio",
+            "options": ["Made it much easier to understand", "Made it easier to understand", "No effect", "Made it harder to understand", "Made it much harder to understand"]
         }
     ],
     "Intonation": [
@@ -223,7 +254,8 @@ FOLLOW_UP_QUESTIONS = {
         {
             "id": "emotional_impact",
             "text": "How did the intonation affect the emotional impact of the message?",
-            "type": "text"
+            "type": "radio",
+            "options": ["Very positive emotional impact", "Positive emotional impact", "Neutral impact", "Negative emotional impact", "Very negative emotional impact"]
         }
     ],
     "Stress": [
@@ -680,17 +712,11 @@ def show_follow_up_questions():
                 if feature in FEATURE_EXPLANATIONS:
                     st.markdown(f"*{FEATURE_EXPLANATIONS[feature]}*")
                 for question in FOLLOW_UP_QUESTIONS[feature]:
-                    if question['type'] == 'radio':
-                        response = st.radio(
-                            question['text'],
-                            options=question['options'],
-                            key=f"{current_clip_id}_followup_{feature.replace(' ', '_').lower()}_{question['id']}"
-                        )
-                    elif question['type'] == 'text':
-                        response = st.text_area(
-                            question['text'],
-                            key=f"{current_clip_id}_followup_{feature.replace(' ', '_').lower()}_{question['id']}"
-                        )
+                    response = st.radio(
+                        question['text'],
+                        options=question['options'],
+                        key=f"{current_clip_id}_followup_{feature.replace(' ', '_').lower()}_{question['id']}"
+                    )
                     
                     follow_up_responses[f"{current_clip_id}_followup_{feature.replace(' ', '_').lower()}_{question['id']}"] = response
                 
