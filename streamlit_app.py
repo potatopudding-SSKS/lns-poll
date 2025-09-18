@@ -4,6 +4,8 @@ import plotly.express as px
 from datetime import datetime
 import json
 import os
+import glob
+from streamlit_sortables import sort_items
 
 # Set page configuration
 st.set_page_config(
@@ -12,90 +14,90 @@ st.set_page_config(
     layout="wide"
 )
 
-# Hardcoded audio clips and questions
-AUDIO_CLIPS = {
-    "clip1": {
-        "file": "audio/news_clip_1.mp3",  # Place your audio files in an 'audio' folder
-        "title": "News Report 1: Economic Update",
-        "questions": [
-            {
-                "id": "trustworthiness_1",
-                "text": "How trustworthy does this news report sound?",
-                "type": "scale",
-                "scale": [1, 2, 3, 4, 5, 6, 7],
-                "labels": ["Not trustworthy at all", "Extremely trustworthy"]
-            },
-            {
-                "id": "clarity_1", 
-                "text": "How clear and understandable is the speaker?",
-                "type": "scale",
-                "scale": [1, 2, 3, 4, 5, 6, 7],
-                "labels": ["Very unclear", "Very clear"]
-            },
-            {
-                "id": "credibility_1",
-                "text": "How credible does the information seem?",
-                "type": "scale", 
-                "scale": [1, 2, 3, 4, 5, 6, 7],
-                "labels": ["Not credible at all", "Extremely credible"]
-            }
-        ]
-    },
-    "clip2": {
-        "file": "audio/news_clip_2.mp3",
-        "title": "News Report 2: Weather Forecast",
-        "questions": [
-            {
-                "id": "trustworthiness_2",
-                "text": "How trustworthy does this news report sound?",
-                "type": "scale",
-                "scale": [1, 2, 3, 4, 5, 6, 7],
-                "labels": ["Not trustworthy at all", "Extremely trustworthy"]
-            },
-            {
-                "id": "clarity_2",
-                "text": "How clear and understandable is the speaker?", 
-                "type": "scale",
-                "scale": [1, 2, 3, 4, 5, 6, 7],
-                "labels": ["Very unclear", "Very clear"]
-            },
-            {
-                "id": "credibility_2",
-                "text": "How credible does the information seem?",
-                "type": "scale",
-                "scale": [1, 2, 3, 4, 5, 6, 7], 
-                "labels": ["Not credible at all", "Extremely credible"]
-            }
-        ]
-    },
-    "clip3": {
-        "file": "audio/news_clip_3.mp3",
-        "title": "News Report 3: Sports Update",
-        "questions": [
-            {
-                "id": "trustworthiness_3",
-                "text": "How trustworthy does this news report sound?",
-                "type": "scale",
-                "scale": [1, 2, 3, 4, 5, 6, 7],
-                "labels": ["Not trustworthy at all", "Extremely trustworthy"]
-            },
-            {
-                "id": "clarity_3",
-                "text": "How clear and understandable is the speaker?",
-                "type": "scale", 
-                "scale": [1, 2, 3, 4, 5, 6, 7],
-                "labels": ["Very unclear", "Very clear"]
-            },
-            {
-                "id": "credibility_3",
-                "text": "How credible does the information seem?",
-                "type": "scale",
-                "scale": [1, 2, 3, 4, 5, 6, 7],
-                "labels": ["Not credible at all", "Extremely credible"]
-            }
-        ]
-    }
+# Linguistic features for ranking
+LINGUISTIC_FEATURES = [
+    "Rate of speech",
+    "Tone", 
+    "Inflection",
+    "Intonation",
+    "Stress"
+]
+
+# Follow-up questions based on most influential feature
+FOLLOW_UP_QUESTIONS = {
+    "Rate of speech": [
+        "Did you find the speaking pace too fast, too slow, or just right?",
+        "How did the speaking speed affect your perception of urgency?"
+    ],
+    "Tone": [
+        "Would you describe the tone as formal, casual, or somewhere in between?",
+        "Did the tone convey confidence or uncertainty to you?"
+    ],
+    "Inflection": [
+        "Did the speaker's inflection sound natural or forced?",
+        "How did the inflection patterns affect your understanding?"
+    ],
+    "Intonation": [
+        "Did the intonation sound monotonous or varied?",
+        "How did the intonation affect the emotional impact of the message?"
+    ],
+    "Stress": [
+        "Were the emphasized words appropriate for the content?",
+        "Did the stress patterns help or hinder comprehension?"
+    ]
 }
+
+def get_audio_files():
+    """Automatically detect audio files in the audio folder"""
+    audio_folder = "audio"
+    if not os.path.exists(audio_folder):
+        return {}
+    
+    audio_extensions = ["*.mp3", "*.wav", "*.m4a", "*.ogg"]
+    audio_files = {}
+    
+    for ext in audio_extensions:
+        files = glob.glob(os.path.join(audio_folder, ext))
+        for file_path in files:
+            filename = os.path.basename(file_path)
+            name_without_ext = os.path.splitext(filename)[0]
+            
+            # Create a clean title from filename
+            title = name_without_ext.replace("_", " ").replace("-", " ").title()
+            
+            clip_id = f"clip_{len(audio_files) + 1}"
+            audio_files[clip_id] = {
+                "file": file_path,
+                "title": title,
+                "questions": [
+                    {
+                        "id": f"trustworthiness_{len(audio_files) + 1}",
+                        "text": "How trustworthy does this news report sound?",
+                        "type": "scale",
+                        "scale": [1, 2, 3, 4, 5, 6, 7],
+                        "labels": ["Not trustworthy at all", "Extremely trustworthy"]
+                    },
+                    {
+                        "id": f"clarity_{len(audio_files) + 1}", 
+                        "text": "How clear and understandable is the speaker?",
+                        "type": "scale",
+                        "scale": [1, 2, 3, 4, 5, 6, 7],
+                        "labels": ["Very unclear", "Very clear"]
+                    },
+                    {
+                        "id": f"credibility_{len(audio_files) + 1}",
+                        "text": "How credible does the information seem?",
+                        "type": "scale", 
+                        "scale": [1, 2, 3, 4, 5, 6, 7],
+                        "labels": ["Not credible at all", "Extremely credible"]
+                    }
+                ]
+            }
+    
+    return audio_files
+
+# Get audio clips dynamically
+AUDIO_CLIPS = get_audio_files()
 
 # Initialize session state for storing responses
 if 'responses' not in st.session_state:
@@ -125,8 +127,11 @@ def display_results():
         
         col1, col2, col3 = st.columns(3)
         
+        # Get the clip number from clip_id
+        clip_num = clip_id.replace('clip_', '')
+        
         # Trustworthiness results
-        trust_col = f"trustworthiness_{clip_id.replace('clip', '')}"
+        trust_col = f"trustworthiness_{clip_num}"
         if trust_col in df.columns:
             with col1:
                 st.write("**Trustworthiness Ratings**")
@@ -137,7 +142,7 @@ def display_results():
                 st.plotly_chart(fig1, use_container_width=True)
         
         # Clarity results  
-        clarity_col = f"clarity_{clip_id.replace('clip', '')}"
+        clarity_col = f"clarity_{clip_num}"
         if clarity_col in df.columns:
             with col2:
                 st.write("**Clarity Ratings**")
@@ -148,7 +153,7 @@ def display_results():
                 st.plotly_chart(fig2, use_container_width=True)
         
         # Credibility results
-        cred_col = f"credibility_{clip_id.replace('clip', '')}"
+        cred_col = f"credibility_{clip_num}"
         if cred_col in df.columns:
             with col3:
                 st.write("**Credibility Ratings**")
@@ -158,7 +163,54 @@ def display_results():
                              labels={'x': 'Rating', 'y': 'Count'})
                 st.plotly_chart(fig3, use_container_width=True)
         
+        # Linguistic features ranking analysis
+        st.write("**Linguistic Features Influence Ranking**")
+        ranking_data = []
+        
+        for feature in LINGUISTIC_FEATURES:
+            feature_key = f"{clip_id}_ranking_{feature.replace(' ', '_').lower()}"
+            if feature_key in df.columns:
+                avg_rank = df[feature_key].mean()
+                ranking_data.append({"Feature": feature, "Average Rank": avg_rank})
+        
+        if ranking_data:
+            rank_df = pd.DataFrame(ranking_data).sort_values("Average Rank")
+            fig4 = px.bar(rank_df, x="Feature", y="Average Rank", 
+                         title="Average Influence Ranking (Lower = More Influential)",
+                         labels={'Average Rank': 'Average Rank (1=Most Influential)'})
+            fig4.update_layout(xaxis_tickangle=-45)
+            st.plotly_chart(fig4, use_container_width=True)
+        
+        # Most influential feature summary
+        if f"{clip_id}_most_influential" in df.columns:
+            st.write("**Most Influential Feature (Fallback Method)**")
+            most_influential_counts = df[f"{clip_id}_most_influential"].value_counts()
+            fig5 = px.pie(values=most_influential_counts.values, 
+                         names=most_influential_counts.index,
+                         title="Most Influential Linguistic Feature")
+            st.plotly_chart(fig5, use_container_width=True)
+        
         st.divider()
+    
+    # Overall analysis across all clips
+    st.subheader("📊 Overall Analysis")
+    
+    # Native language distribution
+    if 'native_language' in df.columns:
+        col1, col2 = st.columns(2)
+        with col1:
+            lang_counts = df['native_language'].value_counts()
+            fig_lang = px.pie(values=lang_counts.values, names=lang_counts.index,
+                             title="Participant Native Languages")
+            st.plotly_chart(fig_lang, use_container_width=True)
+        
+        with col2:
+            if 'overall_familiarity' in df.columns:
+                fam_counts = df['overall_familiarity'].value_counts().sort_index()
+                fig_fam = px.bar(x=fam_counts.index, y=fam_counts.values,
+                               title="News Media Analysis Familiarity",
+                               labels={'x': 'Familiarity Level', 'y': 'Count'})
+                st.plotly_chart(fig_fam, use_container_width=True)
     
     # Raw data
     with st.expander("View Raw Data"):
@@ -183,6 +235,11 @@ def main():
     with tab1:
         st.header("Survey Form")
         
+        if not AUDIO_CLIPS:
+            st.error("No audio files found in the 'audio' folder. Please add audio files (.mp3, .wav, .m4a, .ogg) to continue.")
+            st.info("Expected audio folder location: `audio/`")
+            return
+        
         with st.form("trustworthiness_survey"):
             # Participant information
             st.subheader("👤 Participant Information")
@@ -199,16 +256,15 @@ def main():
             for clip_id, clip_data in AUDIO_CLIPS.items():
                 st.subheader(f"🎵 {clip_data['title']}")
                 
-                # Try to display audio file if it exists
+                # Display audio file
                 if os.path.exists(clip_data['file']):
                     st.audio(clip_data['file'])
                 else:
                     st.warning(f"Audio file not found: {clip_data['file']}")
-                    st.info("Please place your audio files in the 'audio' folder with the correct names.")
                 
                 st.markdown("**Please listen to the audio clip above and answer the following questions:**")
                 
-                # Display questions for this clip
+                # Standard questions for this clip
                 for question in clip_data['questions']:
                     if question['type'] == 'scale':
                         response = st.select_slider(
@@ -218,6 +274,47 @@ def main():
                             key=f"{clip_id}_{question['id']}"
                         )
                         responses[question['id']] = response
+                
+                # Drag and drop ranking question
+                st.markdown("**Which of the following features do you think influenced your opinion the most?**")
+                st.markdown("*Drag and drop to rank from most influential (top) to least influential (bottom):*")
+                
+                # Use streamlit-sortables for drag and drop
+                try:
+                    sorted_features = sort_items(
+                        LINGUISTIC_FEATURES.copy(),
+                        direction="vertical",
+                        key=f"{clip_id}_ranking"
+                    )
+                    
+                    # Store the ranking (1 = most influential, 5 = least influential)
+                    for idx, feature in enumerate(sorted_features):
+                        responses[f"{clip_id}_ranking_{feature.replace(' ', '_').lower()}"] = idx + 1
+                    
+                    # Get the most influential feature for follow-up questions
+                    most_influential = sorted_features[0] if sorted_features else None
+                    
+                except Exception as e:
+                    # Fallback if streamlit-sortables doesn't work
+                    st.warning("Drag-and-drop not available. Using dropdown instead.")
+                    most_influential = st.selectbox(
+                        "Which feature influenced your opinion the most?",
+                        LINGUISTIC_FEATURES,
+                        key=f"{clip_id}_most_influential"
+                    )
+                    responses[f"{clip_id}_most_influential"] = most_influential
+                
+                # Follow-up questions based on most influential feature
+                if most_influential and most_influential in FOLLOW_UP_QUESTIONS:
+                    st.markdown(f"**Follow-up questions about {most_influential.lower()}:**")
+                    
+                    for idx, follow_up_q in enumerate(FOLLOW_UP_QUESTIONS[most_influential]):
+                        follow_up_response = st.text_input(
+                            follow_up_q,
+                            key=f"{clip_id}_followup_{idx}",
+                            placeholder="Please share your thoughts..."
+                        )
+                        responses[f"{clip_id}_followup_{most_influential.replace(' ', '_').lower()}_{idx}"] = follow_up_response
                 
                 st.divider()
             
