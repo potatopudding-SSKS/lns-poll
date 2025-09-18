@@ -146,6 +146,15 @@ st.markdown("""
         font-size: 1.1rem !important;
     }
     
+    /* Larger slider text and styling */
+    .stSlider > div {
+        font-size: 1.1rem !important;
+    }
+    
+    .stSlider > div > div > div {
+        font-size: 1.1rem !important;
+    }
+    
     /* Larger form labels */
     .stSelectbox > label, .stSlider > label, .stRadio > label, .stTextInput > label {
         font-size: 1.2rem !important;
@@ -196,7 +205,7 @@ FEATURE_EXPLANATIONS = {
     "Rate of speech": "The speed at which the speaker talks (fast, slow, or moderate pace)",
     "Tone": "The emotional quality or attitude in the speaker's voice (formal, casual, confident, etc.)",
     "Inflection": "The rise and fall of the voice within individual words or phrases",
-    "Intonation": "The rise and fall of the voice across sentences"
+    "Intonation": "The overall melody or musical pattern of speech across sentences",
     "Stress": "The emphasis placed on certain words or syllables to highlight important information"
 }
 
@@ -205,71 +214,81 @@ FOLLOW_UP_QUESTIONS = {
     "Rate of speech": [
         {
             "id": "pace_assessment",
-            "text": "Did you find the speaking pace:",
-            "type": "radio",
-            "options": ["Too fast", "Too slow", "Just right"]
+            "text": "How would you rate the speaking pace?",
+            "type": "slider",
+            "scale": [1, 2, 3, 4, 5],
+            "labels": ["Too slow", "Just right", "Too fast"]
         },
         {
             "id": "urgency_perception", 
             "text": "How did the speaking speed affect your perception of urgency?",
-            "type": "radio",
-            "options": ["Made it feel very urgent", "Made it feel somewhat urgent", "No effect on urgency", "Made it feel less urgent", "Made it feel very relaxed"]
+            "type": "slider",
+            "scale": [1, 2, 3, 4, 5],
+            "labels": ["Very relaxed", "Neutral", "Very urgent"]
         }
     ],
     "Tone": [
         {
             "id": "tone_formality",
-            "text": "Would you describe the tone as:",
-            "type": "radio", 
-            "options": ["Very formal", "Somewhat formal", "Neutral", "Somewhat casual", "Very casual"]
+            "text": "How would you describe the tone's formality level?",
+            "type": "slider",
+            "scale": [1, 2, 3, 4, 5],
+            "labels": ["Very casual", "Neutral", "Very formal"]
         },
         {
             "id": "tone_confidence",
-            "text": "Did the tone convey confidence or uncertainty to you?",
-            "type": "radio",
-            "options": ["Very confident", "Confident", "Neutral", "Uncertain", "Very uncertain"]
+            "text": "How confident did the tone sound?",
+            "type": "slider",
+            "scale": [1, 2, 3, 4, 5],
+            "labels": ["Very uncertain", "Neutral", "Very confident"]
         }
     ],
     "Inflection": [
         {
             "id": "inflection_naturalness",
-            "text": "Did the speaker's inflection sound:",
-            "type": "radio",
-            "options": ["Very natural", "Somewhat natural", "Neutral", "Somewhat forced", "Very forced"]
+            "text": "How natural did the speaker's inflection sound?",
+            "type": "slider",
+            "scale": [1, 2, 3, 4, 5],
+            "labels": ["Very forced", "Neutral", "Very natural"]
         },
         {
             "id": "inflection_understanding",
             "text": "How did the inflection patterns affect your understanding?",
-            "type": "radio",
-            "options": ["Made it much easier to understand", "Made it easier to understand", "No effect", "Made it harder to understand", "Made it much harder to understand"]
+            "type": "slider",
+            "scale": [1, 2, 3, 4, 5],
+            "labels": ["Much harder", "No effect", "Much easier"]
         }
     ],
     "Intonation": [
         {
             "id": "intonation_variety",
-            "text": "Did the intonation sound:",
-            "type": "radio",
-            "options": ["Very monotonous", "Somewhat monotonous", "Neutral", "Somewhat varied", "Very varied"]
+            "text": "How varied was the intonation?",
+            "type": "slider",
+            "scale": [1, 2, 3, 4, 5],
+            "labels": ["Very monotonous", "Neutral", "Very varied"]
         },
         {
             "id": "emotional_impact",
-            "text": "How did the intonation affect the emotional impact of the message?",
-            "type": "radio",
-            "options": ["Very positive emotional impact", "Positive emotional impact", "Neutral impact", "Negative emotional impact", "Very negative emotional impact"]
+            "text": "What was the emotional impact of the intonation?",
+            "type": "slider",
+            "scale": [1, 2, 3, 4, 5],
+            "labels": ["Very negative", "Neutral", "Very positive"]
         }
     ],
     "Stress": [
         {
             "id": "stress_appropriateness",
-            "text": "Were the emphasized words appropriate for the content?",
-            "type": "radio",
-            "options": ["Very appropriate", "Appropriate", "Neutral", "Inappropriate", "Very inappropriate"]
+            "text": "How appropriate were the emphasized words for the content?",
+            "type": "slider",
+            "scale": [1, 2, 3, 4, 5],
+            "labels": ["Very inappropriate", "Neutral", "Very appropriate"]
         },
         {
             "id": "stress_comprehension",
-            "text": "Did the stress patterns help or hinder comprehension?",
-            "type": "radio", 
-            "options": ["Helped a lot", "Helped somewhat", "No effect", "Hindered somewhat", "Hindered a lot"]
+            "text": "How did the stress patterns affect comprehension?",
+            "type": "slider",
+            "scale": [1, 2, 3, 4, 5],
+            "labels": ["Hindered a lot", "No effect", "Helped a lot"]
         }
     ]
 }
@@ -712,11 +731,21 @@ def show_follow_up_questions():
                 if feature in FEATURE_EXPLANATIONS:
                     st.markdown(f"*{FEATURE_EXPLANATIONS[feature]}*")
                 for question in FOLLOW_UP_QUESTIONS[feature]:
-                    response = st.radio(
-                        question['text'],
-                        options=question['options'],
-                        key=f"{current_clip_id}_followup_{feature.replace(' ', '_').lower()}_{question['id']}"
-                    )
+                    if question['type'] == 'slider':
+                        response = st.select_slider(
+                            question['text'],
+                            options=question['scale'],
+                            value=3,  # Default to middle value
+                            format_func=lambda x, labels=question['labels']: f"{x} - {labels[0] if x == 1 else labels[1] if x == 3 else labels[2] if x == 5 else ''}",
+                            key=f"{current_clip_id}_followup_{feature.replace(' ', '_').lower()}_{question['id']}"
+                        )
+                    else:
+                        # Fallback for any remaining radio questions
+                        response = st.radio(
+                            question['text'],
+                            options=question.get('options', []),
+                            key=f"{current_clip_id}_followup_{feature.replace(' ', '_').lower()}_{question['id']}"
+                        )
                     
                     follow_up_responses[f"{current_clip_id}_followup_{feature.replace(' ', '_').lower()}_{question['id']}"] = response
                 
