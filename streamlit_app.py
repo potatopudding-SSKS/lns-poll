@@ -504,6 +504,30 @@ def main():
     st.markdown('<h1 class="main-header">News Audio Trustworthiness Survey</h1>', unsafe_allow_html=True)
     st.markdown("**Research Study: How Linguistic Features Affect News Audio Trustworthiness**")
     
+    # Cloud storage status in sidebar (show always)
+    st.sidebar.header("System Status")
+    
+    if CLOUD_STORAGE_AVAILABLE:
+        if "gcp_service_account" in st.secrets:
+            # Check if secrets contain real values (not placeholders)
+            project_id = st.secrets["gcp_service_account"].get("project_id", "")
+            private_key = st.secrets["gcp_service_account"].get("private_key", "")
+            
+            if project_id and project_id != "your-project-id" and "BEGIN PRIVATE KEY" in private_key and "..." not in private_key:
+                st.sidebar.success("☁️ Cloud Storage: Active")
+            else:
+                st.sidebar.warning("☁️ Cloud Storage: Configured with Placeholders")
+                st.sidebar.info("Replace placeholder values with real Google Cloud credentials")
+        else:
+            st.sidebar.warning("☁️ Cloud Storage: Not Configured")
+            st.sidebar.info("Add Google Cloud service account to secrets for web deployment")
+    else:
+        st.sidebar.error("☁️ Cloud Storage: Libraries Missing")
+        st.sidebar.info("Install: pip install gspread google-auth")
+    
+    # Display response count
+    st.sidebar.metric("Current Responses", len(st.session_state.responses))
+
     # Owner authentication for results
     st.sidebar.header("Owner Access")
     owner_password = st.sidebar.text_input("Enter owner password to view results", type="password")
@@ -732,27 +756,8 @@ def show_completion_page():
         st.session_state.current_responses = {}
         st.rerun()
     
-    # Sidebar with additional features
+    # Sidebar with additional features (moved cloud storage status to main())
     st.sidebar.header("Survey Controls")
-    
-    # Cloud storage status
-    if CLOUD_STORAGE_AVAILABLE:
-        if "gcp_service_account" in st.secrets:
-            # Check if secrets contain real values (not placeholders)
-            project_id = st.secrets["gcp_service_account"].get("project_id", "")
-            private_key = st.secrets["gcp_service_account"].get("private_key", "")
-            
-            if project_id and project_id != "your-project-id" and "BEGIN PRIVATE KEY" in private_key and "..." not in private_key:
-                st.sidebar.success("☁️ Cloud Storage: Active")
-            else:
-                st.sidebar.warning("☁️ Cloud Storage: Configured with Placeholders")
-                st.sidebar.info("Replace placeholder values with real Google Cloud credentials")
-        else:
-            st.sidebar.warning("☁️ Cloud Storage: Not Configured")
-            st.sidebar.info("Add Google Cloud service account to secrets for web deployment")
-    else:
-        st.sidebar.error("☁️ Cloud Storage: Libraries Missing")
-        st.sidebar.info("Install: pip install gspread google-auth")
     
     # Download results as CSV
     if st.session_state.responses:
@@ -770,9 +775,6 @@ def show_completion_page():
         st.session_state.responses = []
         st.sidebar.success("All responses cleared!")
         st.rerun()
-    
-    # Display response count in sidebar
-    st.sidebar.metric("Current Responses", len(st.session_state.responses))
 
 if __name__ == "__main__":
     main()
