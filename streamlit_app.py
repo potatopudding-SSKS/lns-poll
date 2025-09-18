@@ -6,6 +6,7 @@ from datetime import datetime
 import json
 import os
 import glob
+from streamlit_sortables import sort_items
 
 # Set page configuration
 st.set_page_config(
@@ -15,7 +16,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for drag-and-drop interface
+# Clean CSS for better styling
 st.markdown("""
 <style>
     .main-header {
@@ -33,85 +34,6 @@ st.markdown("""
         margin: 1rem 0;
     }
     
-    .drag-drop-container {
-        display: flex;
-        gap: 2rem;
-        margin: 2rem 0;
-    }
-    
-    .features-pool {
-        flex: 1;
-        background-color: #2D2D2D;
-        padding: 1rem;
-        border-radius: 8px;
-        border: 2px dashed #64B5F6;
-        min-height: 300px;
-    }
-    
-    .ranking-area {
-        flex: 1;
-        background-color: #1E3A8A;
-        padding: 1rem;
-        border-radius: 8px;
-        border: 2px solid #64B5F6;
-        min-height: 300px;
-    }
-    
-    .feature-block {
-        background: linear-gradient(135deg, #4A90E2 0%, #357ABD 100%);
-        color: white;
-        padding: 1rem;
-        margin: 0.5rem 0;
-        border-radius: 8px;
-        text-align: center;
-        font-weight: 600;
-        cursor: move;
-        border: 2px solid #357ABD;
-        transition: all 0.3s ease;
-        user-select: none;
-    }
-    
-    .feature-block:hover {
-        background: linear-gradient(135deg, #357ABD 0%, #1976D2 100%);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
-    }
-    
-    .ranking-slot {
-        background-color: #334155;
-        border: 2px dashed #64B5F6;
-        padding: 1rem;
-        margin: 0.5rem 0;
-        border-radius: 8px;
-        min-height: 60px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #94A3B8;
-        font-style: italic;
-    }
-    
-    .ranking-slot.filled {
-        border: 2px solid #4A90E2;
-        background-color: #1E3A8A;
-        color: white;
-    }
-    
-    .section-header {
-        color: #64B5F6;
-        font-size: 1.2rem;
-        font-weight: 600;
-        margin-bottom: 1rem;
-        text-align: center;
-    }
-    
-    .instructions {
-        color: #B3B3B3;
-        font-style: italic;
-        margin-bottom: 1rem;
-        text-align: center;
-    }
-    
     .follow-up-section {
         background-color: #0F172A;
         padding: 1.5rem;
@@ -119,31 +41,12 @@ st.markdown("""
         border-left: 4px solid #F59E0B;
         margin: 1rem 0;
     }
-</style>
-
-<script>
-function allowDrop(ev) {
-    ev.preventDefault();
-}
-
-function drag(ev) {
-    ev.dataTransfer.setData("text", ev.target.id);
-}
-
-function drop(ev) {
-    ev.preventDefault();
-    var data = ev.dataTransfer.getData("text");
-    var draggedElement = document.getElementById(data);
     
-    // If dropping in ranking area, create a copy
-    if (ev.target.classList.contains('ranking-slot') && !ev.target.hasChildNodes()) {
-        var clone = draggedElement.cloneNode(true);
-        clone.id = data + '_ranked';
-        ev.target.appendChild(clone);
-        ev.target.classList.add('filled');
+    .section-divider {
+        border-top: 2px solid #444;
+        margin: 2rem 0;
     }
-}
-</script>
+</style>
 """, unsafe_allow_html=True)
 
 # Linguistic features for ranking
@@ -300,54 +203,52 @@ def save_response(response_data):
     st.session_state.responses.append(response_data)
 
 def create_drag_drop_ranking(clip_id):
-    """Create drag and drop ranking interface"""
+    """Create drag and drop ranking interface using streamlit-sortables"""
     st.markdown("**Which of the following features do you think influenced your opinion the most?**")
-    st.markdown('<p class="instructions">Drag the features from the left pool to the ranking area on the right. Place the most influential feature at the top.</p>', unsafe_allow_html=True)
+    st.markdown("*Drag and drop to rank from most influential (top) to least influential (bottom):*")
     
-    # Create two columns for drag-drop interface
-    col1, col2 = st.columns([1, 1])
+    # Initialize session state for this clip's ranking if not exists
+    ranking_key = f"ranking_{clip_id}"
+    if ranking_key not in st.session_state:
+        st.session_state[ranking_key] = LINGUISTIC_FEATURES.copy()
     
-    with col1:
-        st.markdown('<div class="section-header">Available Features</div>', unsafe_allow_html=True)
-        st.markdown('<div class="features-pool" id="features-pool">', unsafe_allow_html=True)
-        
-        for i, feature in enumerate(LINGUISTIC_FEATURES):
-            feature_id = f"feature_{clip_id}_{i}"
-            st.markdown(f'''
-                <div class="feature-block" draggable="true" ondragstart="drag(event)" id="{feature_id}">
-                    {feature}
-                </div>
-            ''', unsafe_allow_html=True)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown('<div class="section-header">Ranking (Most → Least Influential)</div>', unsafe_allow_html=True)
-        st.markdown('<div class="ranking-area" ondrop="drop(event)" ondragover="allowDrop(event)">', unsafe_allow_html=True)
-        
-        for i in range(5):
-            rank_position = i + 1
-            st.markdown(f'''
-                <div class="ranking-slot" ondrop="drop(event)" ondragover="allowDrop(event)" id="rank_{clip_id}_{rank_position}">
-                    Position {rank_position} (Drag feature here)
-                </div>
-            ''', unsafe_allow_html=True)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Fallback manual ranking system
-    st.markdown("---")
-    st.markdown("**Alternative: Manual Ranking** (if drag-and-drop doesn't work)")
-    
-    ranking_options = {}
-    for feature in LINGUISTIC_FEATURES:
-        ranking_options[feature] = st.selectbox(
-            f"Rank for {feature} (1=Most influential, 5=Least influential)",
-            options=[1, 2, 3, 4, 5],
-            key=f"manual_rank_{clip_id}_{feature.replace(' ', '_').lower()}"
+    # Create the sortable list
+    try:
+        sorted_items = sort_items(
+            st.session_state[ranking_key],
+            direction="vertical",
+            key=f"sortable_{clip_id}"
         )
-    
-    return ranking_options
+        
+        # Update session state with new order
+        st.session_state[ranking_key] = sorted_items
+        
+        # Display current ranking
+        st.markdown("**Current Ranking (Top = Most Influential):**")
+        for i, item in enumerate(sorted_items):
+            st.markdown(f"{i+1}. {item}")
+        
+        # Convert to ranking dictionary for processing
+        ranking_dict = {}
+        for i, feature in enumerate(sorted_items):
+            ranking_dict[feature] = i + 1  # 1 = most influential
+        
+        return ranking_dict
+        
+    except Exception as e:
+        st.error(f"Drag-and-drop interface failed: {e}")
+        st.markdown("**Fallback: Manual Ranking**")
+        
+        # Fallback manual ranking system
+        ranking_options = {}
+        for feature in LINGUISTIC_FEATURES:
+            ranking_options[feature] = st.selectbox(
+                f"Rank for {feature} (1=Most influential, 5=Least influential)",
+                options=[1, 2, 3, 4, 5],
+                key=f"manual_rank_{clip_id}_{feature.replace(' ', '_').lower()}"
+            )
+        
+        return ranking_options
 
 def display_results():
     """Display survey results with charts"""
@@ -619,7 +520,9 @@ def show_ranking_interface():
     st.subheader(f"🎯 Feature Ranking - {AUDIO_CLIPS[current_clip_id]['title']}")
     
     # Create the drag-drop interface
-    ranking_options = create_drag_drop_ranking(current_clip_id)
+    ranking_dict = create_drag_drop_ranking(current_clip_id)
+    
+    st.markdown("---")
     
     col1, col2 = st.columns([1, 1])
     
@@ -630,17 +533,17 @@ def show_ranking_interface():
     
     with col2:
         if st.button("Continue to Follow-up →", type="primary", key="continue_to_followup"):
-            # Validate rankings are unique
-            ranking_values = list(ranking_options.values())
-            if len(set(ranking_values)) != len(ranking_values):
+            # For streamlit-sortables, we don't need to validate uniqueness as it's automatic
+            # But for manual fallback, we do
+            if isinstance(ranking_dict, dict) and len(set(ranking_dict.values())) != len(ranking_dict.values()):
                 st.error("Please ensure each feature has a unique ranking (1-5).")
             else:
                 # Save rankings
-                for feature, rank in ranking_options.items():
+                for feature, rank in ranking_dict.items():
                     st.session_state.current_responses[f"{current_clip_id}_ranking_{feature.replace(' ', '_').lower()}"] = rank
                 
-                # Find most influential feature (lowest rank number)
-                most_influential = min(ranking_options, key=ranking_options.get)
+                # Find most influential feature (lowest rank number = position 1)
+                most_influential = min(ranking_dict, key=ranking_dict.get)
                 st.session_state.current_responses[f"{current_clip_id}_most_influential"] = most_influential
                 st.session_state.survey_step = 'follow_up'
                 st.rerun()
