@@ -1,18 +1,74 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 from datetime import datetime
 import json
 import os
 import glob
-from streamlit_sortables import sort_items
 
 # Set page configuration
 st.set_page_config(
     page_title="News Audio Trustworthiness Survey",
     page_icon="🎙️",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
+
+# Custom CSS for better dark theme styling
+st.markdown("""
+<style>
+    .main-header {
+        font-size: 2.5rem;
+        color: #64B5F6;
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+    
+    .audio-section {
+        background-color: #1E1E1E;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border-left: 4px solid #64B5F6;
+        margin: 1rem 0;
+    }
+    
+    .ranking-container {
+        background-color: #2D2D2D;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 1px solid #444;
+        margin: 1rem 0;
+    }
+    
+    .feature-item {
+        background-color: #4A90E2;
+        color: white;
+        padding: 0.8rem;
+        margin: 0.3rem 0;
+        border-radius: 6px;
+        text-align: center;
+        font-weight: 500;
+        border: 1px solid #357ABD;
+    }
+    
+    .feature-item:hover {
+        background-color: #357ABD;
+        cursor: pointer;
+    }
+    
+    .instructions {
+        color: #B3B3B3;
+        font-style: italic;
+        margin-bottom: 1rem;
+    }
+    
+    .section-divider {
+        border-top: 2px solid #444;
+        margin: 2rem 0;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # Linguistic features for ranking
 LINGUISTIC_FEATURES = [
@@ -121,6 +177,9 @@ def display_results():
     # Display total responses
     st.metric("Total Responses", len(df))
     
+    # Color scheme for charts (blue theme)
+    color_palette = ['#4A90E2', '#64B5F6', '#1976D2', '#0D47A1', '#42A5F5']
+    
     # Create charts for each audio clip
     for clip_id, clip_data in AUDIO_CLIPS.items():
         st.subheader(f"Results for {clip_data['title']}")
@@ -138,7 +197,13 @@ def display_results():
                 trust_counts = df[trust_col].value_counts().sort_index()
                 fig1 = px.bar(x=trust_counts.index, y=trust_counts.values,
                              title="Trustworthiness Distribution",
-                             labels={'x': 'Rating', 'y': 'Count'})
+                             labels={'x': 'Rating', 'y': 'Count'},
+                             color_discrete_sequence=[color_palette[0]])
+                fig1.update_layout(
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    font_color='white'
+                )
                 st.plotly_chart(fig1, use_container_width=True)
         
         # Clarity results  
@@ -149,7 +214,13 @@ def display_results():
                 clarity_counts = df[clarity_col].value_counts().sort_index()
                 fig2 = px.bar(x=clarity_counts.index, y=clarity_counts.values,
                              title="Clarity Distribution", 
-                             labels={'x': 'Rating', 'y': 'Count'})
+                             labels={'x': 'Rating', 'y': 'Count'},
+                             color_discrete_sequence=[color_palette[1]])
+                fig2.update_layout(
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    font_color='white'
+                )
                 st.plotly_chart(fig2, use_container_width=True)
         
         # Credibility results
@@ -160,7 +231,13 @@ def display_results():
                 cred_counts = df[cred_col].value_counts().sort_index()
                 fig3 = px.bar(x=cred_counts.index, y=cred_counts.values,
                              title="Credibility Distribution",
-                             labels={'x': 'Rating', 'y': 'Count'})
+                             labels={'x': 'Rating', 'y': 'Count'},
+                             color_discrete_sequence=[color_palette[2]])
+                fig3.update_layout(
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    font_color='white'
+                )
                 st.plotly_chart(fig3, use_container_width=True)
         
         # Linguistic features ranking analysis
@@ -177,20 +254,32 @@ def display_results():
             rank_df = pd.DataFrame(ranking_data).sort_values("Average Rank")
             fig4 = px.bar(rank_df, x="Feature", y="Average Rank", 
                          title="Average Influence Ranking (Lower = More Influential)",
-                         labels={'Average Rank': 'Average Rank (1=Most Influential)'})
-            fig4.update_layout(xaxis_tickangle=-45)
+                         labels={'Average Rank': 'Average Rank (1=Most Influential)'},
+                         color_discrete_sequence=[color_palette[3]])
+            fig4.update_layout(
+                xaxis_tickangle=-45,
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font_color='white'
+            )
             st.plotly_chart(fig4, use_container_width=True)
         
         # Most influential feature summary
         if f"{clip_id}_most_influential" in df.columns:
-            st.write("**Most Influential Feature (Fallback Method)**")
+            st.write("**Most Influential Feature Summary**")
             most_influential_counts = df[f"{clip_id}_most_influential"].value_counts()
             fig5 = px.pie(values=most_influential_counts.values, 
                          names=most_influential_counts.index,
-                         title="Most Influential Linguistic Feature")
+                         title="Most Influential Linguistic Feature",
+                         color_discrete_sequence=color_palette)
+            fig5.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font_color='white'
+            )
             st.plotly_chart(fig5, use_container_width=True)
         
-        st.divider()
+        st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
     
     # Overall analysis across all clips
     st.subheader("📊 Overall Analysis")
@@ -201,7 +290,13 @@ def display_results():
         with col1:
             lang_counts = df['native_language'].value_counts()
             fig_lang = px.pie(values=lang_counts.values, names=lang_counts.index,
-                             title="Participant Native Languages")
+                             title="Participant Native Languages",
+                             color_discrete_sequence=color_palette)
+            fig_lang.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font_color='white'
+            )
             st.plotly_chart(fig_lang, use_container_width=True)
         
         with col2:
@@ -209,15 +304,21 @@ def display_results():
                 fam_counts = df['overall_familiarity'].value_counts().sort_index()
                 fig_fam = px.bar(x=fam_counts.index, y=fam_counts.values,
                                title="News Media Analysis Familiarity",
-                               labels={'x': 'Familiarity Level', 'y': 'Count'})
+                               labels={'x': 'Familiarity Level', 'y': 'Count'},
+                               color_discrete_sequence=[color_palette[4]])
+                fig_fam.update_layout(
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    font_color='white'
+                )
                 st.plotly_chart(fig_fam, use_container_width=True)
     
     # Raw data
     with st.expander("View Raw Data"):
-        st.dataframe(df)
+        st.dataframe(df, use_container_width=True)
 
 def main():
-    st.title("🎙️ News Audio Trustworthiness Survey")
+    st.markdown('<h1 class="main-header">🎙️ News Audio Trustworthiness Survey</h1>', unsafe_allow_html=True)
     st.markdown("**Research Study: How Linguistic Features Affect News Audio Trustworthiness**")
     st.markdown("Please listen to each audio clip carefully and answer the questions about your perception of trustworthiness.")
     
@@ -248,12 +349,13 @@ def main():
             native_language = st.selectbox("Native Language", 
                                          ["English", "Spanish", "French", "German", "Chinese", "Other"])
             
-            st.divider()
+            st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
             
             # Collect responses for all audio clips
             responses = {}
             
             for clip_id, clip_data in AUDIO_CLIPS.items():
+                st.markdown(f'<div class="audio-section">', unsafe_allow_html=True)
                 st.subheader(f"🎵 {clip_data['title']}")
                 
                 # Display audio file
@@ -270,42 +372,41 @@ def main():
                         response = st.select_slider(
                             question['text'],
                             options=question['scale'],
-                            format_func=lambda x: f"{x} - {question['labels'][0] if x == 1 else question['labels'][1] if x == 7 else ''}",
+                            format_func=lambda x, labels=question['labels']: f"{x} - {labels[0] if x == 1 else labels[1] if x == 7 else ''}",
                             key=f"{clip_id}_{question['id']}"
                         )
                         responses[question['id']] = response
                 
-                # Drag and drop ranking question
+                # Improved ranking question using select boxes
                 st.markdown("**Which of the following features do you think influenced your opinion the most?**")
-                st.markdown("*Drag and drop to rank from most influential (top) to least influential (bottom):*")
+                st.markdown('<p class="instructions">Rank each feature from 1 (most influential) to 5 (least influential):</p>', unsafe_allow_html=True)
                 
-                # Use streamlit-sortables for drag and drop
-                try:
-                    sorted_features = sort_items(
-                        LINGUISTIC_FEATURES.copy(),
-                        direction="vertical",
-                        key=f"{clip_id}_ranking"
-                    )
-                    
-                    # Store the ranking (1 = most influential, 5 = least influential)
-                    for idx, feature in enumerate(sorted_features):
-                        responses[f"{clip_id}_ranking_{feature.replace(' ', '_').lower()}"] = idx + 1
-                    
-                    # Get the most influential feature for follow-up questions
-                    most_influential = sorted_features[0] if sorted_features else None
-                    
-                except Exception as e:
-                    # Fallback if streamlit-sortables doesn't work
-                    st.warning("Drag-and-drop not available. Using dropdown instead.")
-                    most_influential = st.selectbox(
-                        "Which feature influenced your opinion the most?",
-                        LINGUISTIC_FEATURES,
-                        key=f"{clip_id}_most_influential"
-                    )
-                    responses[f"{clip_id}_most_influential"] = most_influential
+                st.markdown('<div class="ranking-container">', unsafe_allow_html=True)
+                
+                # Create ranking for each feature
+                feature_rankings = {}
+                cols = st.columns(len(LINGUISTIC_FEATURES))
+                
+                for idx, feature in enumerate(LINGUISTIC_FEATURES):
+                    with cols[idx]:
+                        st.markdown(f'<div class="feature-item">{feature}</div>', unsafe_allow_html=True)
+                        ranking = st.selectbox(
+                            f"Rank for {feature}",
+                            options=[1, 2, 3, 4, 5],
+                            key=f"{clip_id}_rank_{feature.replace(' ', '_').lower()}",
+                            label_visibility="collapsed"
+                        )
+                        feature_rankings[feature] = ranking
+                        responses[f"{clip_id}_ranking_{feature.replace(' ', '_').lower()}"] = ranking
+                
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+                # Find most influential feature (lowest ranking number)
+                most_influential = min(feature_rankings, key=feature_rankings.get)
+                responses[f"{clip_id}_most_influential"] = most_influential
                 
                 # Follow-up questions based on most influential feature
-                if most_influential and most_influential in FOLLOW_UP_QUESTIONS:
+                if most_influential in FOLLOW_UP_QUESTIONS:
                     st.markdown(f"**Follow-up questions about {most_influential.lower()}:**")
                     
                     for idx, follow_up_q in enumerate(FOLLOW_UP_QUESTIONS[most_influential]):
@@ -316,7 +417,8 @@ def main():
                         )
                         responses[f"{clip_id}_followup_{most_influential.replace(' ', '_').lower()}_{idx}"] = follow_up_response
                 
-                st.divider()
+                st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
             
             # Additional questions
             st.subheader("📝 Additional Information")
@@ -335,20 +437,30 @@ def main():
             submitted = st.form_submit_button("Submit Survey", type="primary")
             
             if submitted:
-                # Collect all form data
-                response_data = {
-                    'participant_id': participant_id if participant_id else f"anon_{len(st.session_state.responses)+1}",
-                    'age': age,
-                    'native_language': native_language,
-                    'overall_familiarity': overall_familiarity,
-                    'comments': comments,
-                    **responses  # Add all the audio clip responses
-                }
+                # Validate that rankings are unique for each clip
+                valid_submission = True
+                for clip_id in AUDIO_CLIPS.keys():
+                    clip_rankings = [responses[f"{clip_id}_ranking_{feature.replace(' ', '_').lower()}"] for feature in LINGUISTIC_FEATURES]
+                    if len(set(clip_rankings)) != len(clip_rankings):
+                        st.error(f"Please ensure each feature has a unique ranking for {AUDIO_CLIPS[clip_id]['title']}")
+                        valid_submission = False
+                        break
                 
-                # Save response
-                save_response(response_data)
-                st.success("Thank you for participating in our research! 🎉")
-                st.balloons()
+                if valid_submission:
+                    # Collect all form data
+                    response_data = {
+                        'participant_id': participant_id if participant_id else f"anon_{len(st.session_state.responses)+1}",
+                        'age': age,
+                        'native_language': native_language,
+                        'overall_familiarity': overall_familiarity,
+                        'comments': comments,
+                        **responses  # Add all the audio clip responses
+                    }
+                    
+                    # Save response
+                    save_response(response_data)
+                    st.success("Thank you for participating in our research! 🎉")
+                    st.balloons()
 
     if is_owner:
         with tab2:
