@@ -202,11 +202,11 @@ LINGUISTIC_FEATURES = [
 
 # Explanations for linguistic features
 FEATURE_EXPLANATIONS = {
-    "Rate of speech": "The speed at which the speaker talks (fast, slow, or moderate pace)",
-    "Tone": "The emotional quality or attitude in the speaker's voice (formal, casual, confident, etc.)",
-    "Inflection": "The rise and fall of the voice within individual words or phrases",
-    "Intonation": "The overall melody or musical pattern of speech across sentences",
-    "Stress": "The emphasis placed on certain words or syllables to highlight important information"
+    "Rate of speech": "How fast or slow the speaker talks",
+    "Tone": "The attitude or feeling in the speaker's voice (friendly, serious, confident, etc.)",
+    "Inflection": "How the voice goes up and down within words",
+    "Intonation": "The overall melody and flow of the speech",
+    "Stress": "Which words or parts the speaker emphasizes to make them stand out"
 }
 
 # Follow-up questions based on most influential feature
@@ -214,81 +214,81 @@ FOLLOW_UP_QUESTIONS = {
     "Rate of speech": [
         {
             "id": "pace_assessment",
-            "text": "How would you rate the speaking pace?",
+            "text": "Was the speaking speed right for you?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
             "labels": ["Too slow", "Just right", "Too fast"]
         },
         {
             "id": "urgency_perception", 
-            "text": "How did the speaking speed affect your perception of urgency?",
+            "text": "Did the speed make the news sound urgent?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
-            "labels": ["Very relaxed", "Neutral", "Very urgent"]
+            "labels": ["Very calm", "Normal", "Very urgent"]
         }
     ],
     "Tone": [
         {
             "id": "tone_formality",
-            "text": "How would you describe the tone's formality level?",
+            "text": "How formal did the speaker sound?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
-            "labels": ["Very casual", "Neutral", "Very formal"]
+            "labels": ["Very casual", "Normal", "Very formal"]
         },
         {
             "id": "tone_confidence",
-            "text": "How confident did the tone sound?",
+            "text": "How confident did the speaker sound?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
-            "labels": ["Very uncertain", "Neutral", "Very confident"]
+            "labels": ["Not confident", "Normal", "Very confident"]
         }
     ],
     "Inflection": [
         {
             "id": "inflection_naturalness",
-            "text": "How natural did the speaker's inflection sound?",
+            "text": "Did the voice changes sound natural?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
-            "labels": ["Very forced", "Neutral", "Very natural"]
+            "labels": ["Very fake", "Normal", "Very natural"]
         },
         {
             "id": "inflection_understanding",
-            "text": "How did the inflection patterns affect your understanding?",
+            "text": "Did the voice changes help you understand?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
-            "labels": ["Much harder", "No effect", "Much easier"]
+            "labels": ["Made it harder", "No difference", "Made it easier"]
         }
     ],
     "Intonation": [
         {
             "id": "intonation_variety",
-            "text": "How varied was the intonation?",
+            "text": "How much did the voice melody change?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
-            "labels": ["Very monotonous", "Neutral", "Very varied"]
+            "labels": ["Very flat", "Normal", "Very varied"]
         },
         {
             "id": "emotional_impact",
-            "text": "What was the emotional impact of the intonation?",
+            "text": "How did the voice melody make you feel?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
-            "labels": ["Very negative", "Neutral", "Very positive"]
+            "labels": ["Negative feeling", "No feeling", "Positive feeling"]
         }
     ],
     "Stress": [
         {
             "id": "stress_appropriateness",
-            "text": "How appropriate were the emphasized words for the content?",
+            "text": "Were the right words emphasized?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
-            "labels": ["Very inappropriate", "Neutral", "Very appropriate"]
+            "labels": ["Wrong words", "Okay", "Right words"]
         },
         {
             "id": "stress_comprehension",
-            "text": "How did the stress patterns affect comprehension?",
+            "text": "Did the emphasized words help you understand?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
-            "labels": ["Hindered a lot", "No effect", "Helped a lot"]
+            "labels": ["Made it harder", "No difference", "Made it easier"]
         }
     ]
 }
