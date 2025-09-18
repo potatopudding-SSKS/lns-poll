@@ -214,7 +214,7 @@ FOLLOW_UP_QUESTIONS = {
     "Rate of speech": [
         {
             "id": "pace_assessment",
-            "text": "Did you find the rate of speech to be natural",
+            "text": "Did you find the rate of speech to be natural?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
             "labels": ["Too slow", "Just right", "Too fast"]
@@ -253,7 +253,7 @@ FOLLOW_UP_QUESTIONS = {
         },
         {
             "id": "inflection_understanding",
-            "text": "Did the voice changes help you understand?",
+            "text": "Does the inflection affect your ability to understand the speech?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
             "labels": ["Made it harder", "No difference", "Made it easier"]
