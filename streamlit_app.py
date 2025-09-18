@@ -153,7 +153,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Linguistic features for ranking
+# Linguistic features for ranking with explanations
 LINGUISTIC_FEATURES = [
     "Rate of speech",
     "Tone", 
@@ -161,6 +161,15 @@ LINGUISTIC_FEATURES = [
     "Intonation",
     "Stress"
 ]
+
+# Explanations for linguistic features
+FEATURE_EXPLANATIONS = {
+    "Rate of speech": "The speed at which the speaker talks (fast, slow, or moderate pace)",
+    "Tone": "The emotional quality or attitude in the speaker's voice (formal, casual, confident, etc.)",
+    "Inflection": "The rise and fall of the voice within individual words or phrases",
+    "Intonation": "The overall melody or musical pattern of speech across sentences",
+    "Stress": "The emphasis placed on certain words or syllables to highlight important information"
+}
 
 # Follow-up questions based on most influential feature
 FOLLOW_UP_QUESTIONS = {
@@ -324,6 +333,14 @@ def save_to_google_sheets(response_data):
 def create_drag_drop_ranking(clip_id):
     """Create drag and drop ranking interface using streamlit-sortables"""
     st.markdown("**Which of the following features do you think influenced your opinion the most?**")
+    
+    # Display feature explanations
+    st.markdown("**Linguistic Feature Definitions:**")
+    for feature in LINGUISTIC_FEATURES:
+        if feature in FEATURE_EXPLANATIONS:
+            st.markdown(f"• **{feature}**: {FEATURE_EXPLANATIONS[feature]}")
+    
+    st.markdown("---")
     st.markdown("*Drag and drop to rearrange from most influential (top) to least influential (bottom):*")
     
     # Use streamlit-sortables for drag and drop
@@ -659,7 +676,9 @@ def show_follow_up_questions():
         # Questions for all linguistic features
         for feature in LINGUISTIC_FEATURES:
             if feature in FOLLOW_UP_QUESTIONS:
-                st.markdown(f"### Questions about **{feature}**")
+                st.markdown(f"**{feature}**")
+                if feature in FEATURE_EXPLANATIONS:
+                    st.markdown(f"*{FEATURE_EXPLANATIONS[feature]}*")
                 for question in FOLLOW_UP_QUESTIONS[feature]:
                     if question['type'] == 'radio':
                         response = st.radio(
