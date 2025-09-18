@@ -5,6 +5,15 @@ import plotly.graph_objects as go
 from datetime import datetime
 import pickle
 import os
+import json
+
+# Cloud storage imports (with fallback for local development)
+try:
+    import gspread
+    from google.oauth2.service_account import Credentials
+    CLOUD_STORAGE_AVAILABLE = True
+except ImportError:
+    CLOUD_STORAGE_AVAILABLE = False
 
 # Set page configuration
 st.set_page_config(
@@ -18,7 +27,15 @@ st.set_page_config(
 DATA_FILE = "survey_responses.pkl"
 
 def load_responses():
-    """Load responses from persistent storage"""
+    """Load responses with cloud storage support"""
+    # Try cloud storage first
+    if CLOUD_STORAGE_AVAILABLE and "gcp_service_account" in st.secrets:
+        try:
+            return load_from_google_sheets()
+        except Exception as e:
+            st.warning(f"Cloud storage unavailable, using local storage: {e}")
+    
+    # Fallback to local storage
     try:
         if os.path.exists(DATA_FILE):
             with open(DATA_FILE, 'rb') as f:
@@ -27,6 +44,38 @@ def load_responses():
     except Exception as e:
         st.error(f"Error loading data: {e}")
         return []
+
+def load_from_google_sheets():
+    """Load responses from Google Sheets"""
+    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
+    client = gspread.authorize(creds)
+    
+    sheet = client.open_by_key(st.secrets["google_sheets"]["spreadsheet_id"]).sheet1
+    records = sheet.get_all_records()
+    
+    # Convert back to original format
+    responses = []
+    for record in records:
+        try:
+            # Try to parse complete JSON response first
+            if 'complete_response' in record and record['complete_response']:
+                response = json.loads(record['complete_response'])
+            else:
+                # Fallback to individual fields
+                response = {
+                    'timestamp': record.get('timestamp', ''),
+                    'participant_id': record.get('participant_id', ''),
+                    'age': record.get('age', ''),
+                    'mother_tongue': record.get('mother_tongue', ''),
+                    'naturalness_1': record.get('naturalness_1', ''),
+                    'trustworthiness_1': record.get('trustworthiness_1', ''),
+                }
+            responses.append(response)
+        except Exception as e:
+            continue  # Skip malformed records
+    
+    return responses
 
 def create_results_dashboard():
     """Create the dashboard for viewing survey results"""

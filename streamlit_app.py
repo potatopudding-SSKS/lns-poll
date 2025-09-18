@@ -9,6 +9,14 @@ import glob
 import pickle
 from streamlit_sortables import sort_items
 
+# Cloud storage imports (with fallback for local development)
+try:
+    import gspread
+    from google.oauth2.service_account import Credentials
+    CLOUD_STORAGE_AVAILABLE = True
+except ImportError:
+    CLOUD_STORAGE_AVAILABLE = False
+
 # Set page configuration
 st.set_page_config(
     page_title="News Audio Trustworthiness Survey",
@@ -21,7 +29,15 @@ st.set_page_config(
 DATA_FILE = "survey_responses.pkl"
 
 def load_responses():
-    """Load responses from persistent storage"""
+    """Load responses with cloud storage support"""
+    # Try cloud storage first
+    if CLOUD_STORAGE_AVAILABLE and "gcp_service_account" in st.secrets:
+        try:
+            return load_from_google_sheets()
+        except Exception as e:
+            st.warning(f"Cloud storage unavailable, using local storage: {e}")
+    
+    # Fallback to local storage
     try:
         if os.path.exists(DATA_FILE):
             with open(DATA_FILE, 'rb') as f:
@@ -30,6 +46,38 @@ def load_responses():
     except Exception as e:
         st.error(f"Error loading data: {e}")
         return []
+
+def load_from_google_sheets():
+    """Load responses from Google Sheets"""
+    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
+    client = gspread.authorize(creds)
+    
+    sheet = client.open_by_key(st.secrets["google_sheets"]["spreadsheet_id"]).sheet1
+    records = sheet.get_all_records()
+    
+    # Convert back to original format
+    responses = []
+    for record in records:
+        try:
+            # Try to parse complete JSON response first
+            if 'complete_response' in record and record['complete_response']:
+                response = json.loads(record['complete_response'])
+            else:
+                # Fallback to individual fields
+                response = {
+                    'timestamp': record.get('timestamp', ''),
+                    'participant_id': record.get('participant_id', ''),
+                    'age': record.get('age', ''),
+                    'mother_tongue': record.get('mother_tongue', ''),
+                    'naturalness_1': record.get('naturalness_1', ''),
+                    'trustworthiness_1': record.get('trustworthiness_1', ''),
+                }
+            responses.append(response)
+        except Exception as e:
+            continue  # Skip malformed records
+    
+    return responses
 
 def save_responses(responses):
     """Save responses to persistent storage"""
@@ -214,10 +262,42 @@ def get_audio_files():
 AUDIO_CLIPS = get_audio_files()
 
 def save_response(response_data):
-    """Save response to session state and persistent storage"""
+    """Save response with cloud storage support"""
     response_data['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Try cloud storage first (Google Sheets)
+    if CLOUD_STORAGE_AVAILABLE and "gcp_service_account" in st.secrets:
+        try:
+            save_to_google_sheets(response_data)
+            st.session_state.responses.append(response_data)
+            return
+        except Exception as e:
+            st.warning(f"Cloud storage failed, using local storage: {e}")
+    
+    # Fallback to local storage
     st.session_state.responses.append(response_data)
     save_responses(st.session_state.responses)
+
+def save_to_google_sheets(response_data):
+    """Save response to Google Sheets"""
+    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
+    client = gspread.authorize(creds)
+    
+    sheet = client.open_by_key(st.secrets["google_sheets"]["spreadsheet_id"]).sheet1
+    
+    # Convert response to row format - flatten all data
+    row = [
+        response_data.get('timestamp', ''),
+        response_data.get('participant_id', ''),
+        response_data.get('age', ''),
+        response_data.get('mother_tongue', ''),
+        response_data.get('naturalness_1', ''),
+        response_data.get('trustworthiness_1', ''),
+        json.dumps(response_data)  # Store complete response as JSON
+    ]
+    
+    sheet.append_row(row)
 
 def create_drag_drop_ranking(clip_id):
     """Create drag and drop ranking interface using streamlit-sortables"""
@@ -233,13 +313,10 @@ def create_drag_drop_ranking(clip_id):
             multi_containers=False
         )
         
-        # Display current ranking with emphasis on top 2
+        # Display current ranking
         st.markdown("**Your Current Ranking:**")
         for i, item in enumerate(sorted_items):
-            if i < 2:
-                st.markdown(f"**{i+1}. {item}** *(will get follow-up questions)*")
-            else:
-                st.markdown(f"{i+1}. {item}")
+            st.markdown(f"**{i+1}. {item}**")
         
         # Convert to ranking dictionary for processing
         ranking_dict = {}
@@ -523,7 +600,7 @@ def show_ranking_interface():
     # Create the drag-drop interface
     ranking_dict, top_2_features = create_drag_drop_ranking(current_clip_id)
     
-    st.info("You will be asked follow-up questions about your **top 2** most influential features.")
+    st.info("You will be asked follow-up questions about each linguistic feature.")
     
     st.markdown("---")
     
@@ -644,7 +721,17 @@ def show_completion_page():
         st.rerun()
     
     # Sidebar with additional features
-    st.sidebar.header("📋 Survey Controls")
+    st.sidebar.header("Survey Controls")
+    
+    # Cloud storage status
+    if CLOUD_STORAGE_AVAILABLE and "gcp_service_account" in st.secrets:
+        st.sidebar.success("☁️ Cloud Storage: Active")
+    elif CLOUD_STORAGE_AVAILABLE:
+        st.sidebar.warning("☁️ Cloud Storage: Not Configured")
+        st.sidebar.info("Add Google Sheets credentials to Streamlit secrets for web deployment")
+    else:
+        st.sidebar.error("☁️ Cloud Storage: Not Available")
+        st.sidebar.info("Install: pip install gspread google-auth")
     
     # Download results as CSV
     if st.session_state.responses:

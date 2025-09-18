@@ -1,0 +1,29 @@
+[
+  {
+    "participant_id": "participant_1",
+    "age": 25,
+    "mother_tongue": "Malayalam",
+    "naturalness_1": 3,
+    "trustworthiness_1": 1,
+    "clip_1_ranking_rate_of_speech": 1,
+    "clip_1_ranking_tone": 2,
+    "clip_1_ranking_inflection": 3,
+    "clip_1_ranking_intonation": 4,
+    "clip_1_ranking_stress": 5,
+    "clip_1_top_features": [
+      "Rate of speech",
+      "Tone"
+    ],
+    "clip_1_followup_rate_of_speech_pace_assessment": "Too fast",
+    "clip_1_followup_rate_of_speech_urgency_perception": "",
+    "clip_1_followup_tone_tone_formality": "Very formal",
+    "clip_1_followup_tone_tone_confidence": "Very confident",
+    "clip_1_followup_inflection_inflection_naturalness": "Very natural",
+    "clip_1_followup_inflection_inflection_understanding": "",
+    "clip_1_followup_intonation_intonation_variety": "Very monotonous",
+    "clip_1_followup_intonation_emotional_impact": "",
+    "clip_1_followup_stress_stress_appropriateness": "Very appropriate",
+    "clip_1_followup_stress_stress_comprehension": "Helped a lot",
+    "timestamp": "2025-09-18 19:20:48"
+  }
+]

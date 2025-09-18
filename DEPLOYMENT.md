@@ -10,16 +10,175 @@ This guide explains how to deploy both the survey application and admin portal t
 
 ## Important: Data Storage Considerations
 
-**Local Development vs Cloud Deployment:**
-- Local development uses `survey_responses.pkl` file storage
-- For cloud deployment, consider using a cloud database for data persistence
-- Multiple Streamlit Cloud instances cannot share local file storage
+**⚠️ CRITICAL FOR WEB DEPLOYMENT:**
 
-**Recommended Cloud Storage Options:**
-1. **Google Sheets API** (simple, built-in Streamlit support)
-2. **Supabase** (PostgreSQL database with simple API)
-3. **MongoDB Atlas** (document database)
-4. **AWS S3 + DynamoDB** (enterprise solution)
+The current local storage (`survey_responses.pkl`) **WILL NOT WORK** for web deployment because:
+
+1. **Streamlit Cloud Isolation**: Each app instance has its own file system
+2. **No Data Persistence**: Files are wiped when the app restarts (happens regularly)
+3. **No Cross-Instance Sharing**: Multiple users can't share data across server instances
+4. **Admin Portal Separation**: The admin portal can't access survey data stored locally
+
+**For web deployment, you MUST implement cloud storage. Here are your options:**
+
+### Option 1: Google Sheets (Recommended for Research)
+
+**Pros:**
+- ✅ Free and simple to set up
+- ✅ Built-in data visualization
+- ✅ Easy data export/analysis
+- ✅ Real-time collaboration
+- ✅ Automatic backups
+
+**Setup Steps:**
+1. Create a Google Sheets document
+2. Get Google Cloud service account credentials
+3. Share sheet with service account
+4. Configure Streamlit secrets
+
+**Example Secrets Configuration:**
+```toml
+# .streamlit/secrets.toml
+[gcp_service_account]
+type = "service_account"
+project_id = "your-project-id"
+private_key_id = "your-key-id"
+private_key = "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+client_email = "your-service@project.iam.gserviceaccount.com"
+client_id = "123456789"
+auth_uri = "https://accounts.google.com/o/oauth2/auth"
+token_uri = "https://oauth2.googleapis.com/token"
+
+[google_sheets]
+spreadsheet_id = "1ABC123DEF456-your-spreadsheet-id"
+```
+
+### Option 2: Supabase (PostgreSQL Database)
+
+**Pros:**
+- ✅ Free tier available
+- ✅ Real SQL database
+- ✅ Built-in API
+- ✅ Real-time subscriptions
+
+**Setup:**
+```toml
+# .streamlit/secrets.toml
+[supabase]
+url = "https://your-project.supabase.co"
+key = "your-anon-key"
+```
+
+### Option 3: MongoDB Atlas
+
+**Pros:**
+- ✅ Document-based (good for complex survey data)
+- ✅ Free tier available
+- ✅ Flexible schema
+
+**Setup:**
+```toml
+# .streamlit/secrets.toml
+[mongodb]
+connection_string = "mongodb+srv://user:pass@cluster.mongodb.net/database"
+database_name = "survey_db"
+collection_name = "responses"
+```
+
+## Quick Implementation Guide
+
+### Step 1: Install Cloud Dependencies
+
+```bash
+pip install gspread google-auth google-auth-oauthlib google-auth-httplib2
+```
+
+### Step 2: Modify Your Code
+
+Replace the `save_response()` function in `streamlit_app.py`:
+
+```python
+import gspread
+from google.oauth2.service_account import Credentials
+
+def save_response(response_data):
+    """Save response to Google Sheets with local fallback"""
+    response_data['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Try Google Sheets first
+    if save_to_google_sheets(response_data):
+        st.success("✅ Response saved to cloud")
+        return
+    
+    # Fallback to local storage
+    save_to_local_pickle(response_data)
+    st.warning("⚠️ Saved locally (may not persist in cloud deployment)")
+
+def save_to_google_sheets(response_data):
+    """Save to Google Sheets"""
+    try:
+        scope = ['https://spreadsheets.google.com/feeds',
+                'https://www.googleapis.com/auth/drive']
+        
+        creds = Credentials.from_service_account_info(
+            st.secrets["gcp_service_account"], scopes=scope)
+        client = gspread.authorize(creds)
+        
+        sheet = client.open_by_key(
+            st.secrets["google_sheets"]["spreadsheet_id"]).sheet1
+        
+        # Convert response to row format
+        row = [response_data.get(key, '') for key in [
+            'timestamp', 'age', 'mother_tongue', 'naturalness_1', 
+            'trustworthiness_1'  # Add all your fields here
+        ]]
+        
+        sheet.append_row(row)
+        return True
+    except:
+        return False
+```
+
+### Step 3: Test Locally
+
+1. Set up your Google Sheets credentials
+2. Test with local `.streamlit/secrets.toml`
+3. Verify data appears in your Google Sheet
+
+### Step 4: Deploy to Streamlit Cloud
+
+1. Add secrets to Streamlit Cloud app settings
+2. Deploy your updated code
+3. Test with multiple users
+
+## Data Sync Architecture
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Participant   │    │   Participant   │    │   Participant   │
+│      Browser    │    │      Browser    │    │      Browser    │
+└─────────┬───────┘    └─────────┬───────┘    └─────────┬───────┘
+          │                      │                      │
+          ▼                      ▼                      ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                Streamlit Cloud Apps                             │
+│  ┌─────────────────┐              ┌─────────────────┐          │
+│  │  Survey App     │              │   Admin Portal  │          │
+│  │ (Multiple Users)│              │ (Administrators)│          │
+│  └─────────┬───────┘              └─────────┬───────┘          │
+└────────────┼────────────────────────────────┼──────────────────┘
+             │                                │
+             ▼                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     Cloud Database                              │
+│               (Google Sheets / Supabase / MongoDB)             │
+│                                                                 │
+│  • All responses stored centrally                               │
+│  • Real-time sync between apps                                 │
+│  • Persistent across app restarts                              │
+│  • Accessible by both survey and admin                         │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ## Deployment Steps
 
