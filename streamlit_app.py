@@ -214,7 +214,7 @@ FOLLOW_UP_QUESTIONS = {
     "Rate of speech": [
         {
             "id": "pace_assessment",
-            "text": "Was the speaking speed right for you?",
+            "text": "Did you find the rate of speech to be natural",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
             "labels": ["Too slow", "Just right", "Too fast"]
