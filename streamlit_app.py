@@ -317,6 +317,13 @@ def get_audio_files():
                 "title": title,
                 "questions": [
                     {
+                        "id": f"attitude_{len(audio_files) + 1}",
+                        "text": "Did the reporter have an appropriate attitude while reporting?",
+                        "type": "scale",
+                        "scale": [1, 2, 3, 4, 5],
+                        "labels": ["Not appropriate at all", "Very appropriate"]
+                    },
+                    {
                         "id": f"naturalness_{len(audio_files) + 1}",
                         "text": "How natural does the speech sound?",
                         "type": "scale",
@@ -325,7 +332,7 @@ def get_audio_files():
                     },
                     {
                         "id": f"trustworthiness_{len(audio_files) + 1}",
-                        "text": "How trustworthy/credible is it?",
+                        "text": "How trustworthy/credible does it seem?",
                         "type": "scale",
                         "scale": [1, 2, 3, 4, 5],
                         "labels": ["Not trustworthy/credible at all", "Very trustworthy/credible"]
