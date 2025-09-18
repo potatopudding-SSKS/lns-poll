@@ -34,13 +34,32 @@ def load_responses():
     if CLOUD_STORAGE_AVAILABLE and "gcp_service_account" in st.secrets:
         project_id = st.secrets["gcp_service_account"].get("project_id", "")
         private_key = st.secrets["gcp_service_account"].get("private_key", "")
+        client_email = st.secrets["gcp_service_account"].get("client_email", "")
         
         # Check if we have real credentials (not placeholders)
-        if project_id and project_id != "your-project-id" and "BEGIN PRIVATE KEY" in private_key and "..." not in private_key:
+        is_real_credentials = (
+            project_id and 
+            project_id not in ["your-project-id", "placeholder-project"] and
+            private_key and 
+            "BEGIN PRIVATE KEY" in private_key and 
+            "..." not in private_key and
+            len(private_key) > 100 and
+            client_email and 
+            "@" in client_email and
+            ".iam.gserviceaccount.com" in client_email
+        )
+        
+        if is_real_credentials:
             try:
                 return load_from_google_sheets()
             except Exception as e:
-                st.warning(f"Cloud storage unavailable, using local storage: {e}")
+                # More specific error handling
+                if "Spreadsheet not found" in str(e) or "does not exist" in str(e):
+                    st.error("📊 Google Sheets: Spreadsheet not found. Please check the spreadsheet ID in secrets.")
+                elif "permission" in str(e).lower() or "access" in str(e).lower():
+                    st.error("🔐 Google Sheets: Permission denied. Please share the spreadsheet with the service account email.")
+                else:
+                    st.warning(f"☁️ Cloud storage connection failed, using local storage: {e}")
     
     # Fallback to local storage
     try:
@@ -508,19 +527,37 @@ def main():
     st.sidebar.header("System Status")
     
     if CLOUD_STORAGE_AVAILABLE:
-        if "gcp_service_account" in st.secrets:
-            # Check if secrets contain real values (not placeholders)
-            project_id = st.secrets["gcp_service_account"].get("project_id", "")
-            private_key = st.secrets["gcp_service_account"].get("private_key", "")
-            
-            if project_id and project_id != "your-project-id" and "BEGIN PRIVATE KEY" in private_key and "..." not in private_key:
-                st.sidebar.success("☁️ Cloud Storage: Active")
+        try:
+            if "gcp_service_account" in st.secrets:
+                # Check if secrets contain real values (not placeholders)
+                project_id = st.secrets["gcp_service_account"].get("project_id", "")
+                private_key = st.secrets["gcp_service_account"].get("private_key", "")
+                client_email = st.secrets["gcp_service_account"].get("client_email", "")
+                
+                # More robust validation for real credentials
+                is_real_credentials = (
+                    project_id and 
+                    project_id not in ["your-project-id", "placeholder-project"] and
+                    private_key and 
+                    "BEGIN PRIVATE KEY" in private_key and 
+                    "..." not in private_key and
+                    len(private_key) > 100 and  # Real private keys are long
+                    client_email and 
+                    "@" in client_email and
+                    ".iam.gserviceaccount.com" in client_email
+                )
+                
+                if is_real_credentials:
+                    st.sidebar.success("☁️ Cloud Storage: Active")
+                else:
+                    st.sidebar.warning("☁️ Cloud Storage: Configured with Placeholders")
+                    st.sidebar.info("Replace placeholder values with real Google Cloud credentials")
             else:
-                st.sidebar.warning("☁️ Cloud Storage: Configured with Placeholders")
-                st.sidebar.info("Replace placeholder values with real Google Cloud credentials")
-        else:
-            st.sidebar.warning("☁️ Cloud Storage: Not Configured")
-            st.sidebar.info("Add Google Cloud service account to secrets for web deployment")
+                st.sidebar.warning("☁️ Cloud Storage: Not Configured")
+                st.sidebar.info("Add Google Cloud service account to secrets for web deployment")
+        except Exception as e:
+            st.sidebar.error("☁️ Cloud Storage: Configuration Error")
+            st.sidebar.info(f"Error reading secrets: {str(e)}")
     else:
         st.sidebar.error("☁️ Cloud Storage: Libraries Missing")
         st.sidebar.info("Install: pip install gspread google-auth")
