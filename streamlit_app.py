@@ -19,8 +19,8 @@ except ImportError:
 
 # Set page configuration
 st.set_page_config(
-    page_title="News Audio Trustworthiness Survey",
-    page_icon="�",
+    page_title="Distinguishing between AI and Human Newscasters",
+    page_icon="🎤",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -392,7 +392,7 @@ def display_results():
     
     df = pd.DataFrame(st.session_state.responses)
     
-    st.subheader("News Audio Trustworthiness Survey Results")
+    st.subheader("AI vs Human Newscaster Study Results")
     
     # Display total responses
     st.metric("Total Responses", len(df))
@@ -430,10 +430,10 @@ def display_results():
         trust_col = f"trustworthiness_{clip_num}"
         if trust_col in df.columns:
             with col2:
-                st.write("**Trustworthiness/Credibility Ratings**")
+                st.write("**AI vs Human Perception Ratings**")
                 trust_counts = df[trust_col].value_counts().sort_index()
                 fig2 = px.bar(x=trust_counts.index, y=trust_counts.values,
-                             title="Trustworthiness/Credibility Distribution", 
+                             title="AI vs Human Perception Distribution", 
                              labels={'x': 'Rating', 'y': 'Count'},
                              color_discrete_sequence=[color_palette[1]])
                 fig2.update_layout(
@@ -520,8 +520,8 @@ def display_results():
         st.dataframe(df, use_container_width=True)
 
 def main():
-    st.markdown('<h1 class="main-header">News Audio Trustworthiness Survey</h1>', unsafe_allow_html=True)
-    st.markdown("**Research Study: How Linguistic Features Affect News Audio Trustworthiness**")
+    st.markdown('<h1 class="main-header">Distinguishing between AI and Human Newscasters</h1>', unsafe_allow_html=True)
+    st.markdown("**Research Study: How Linguistic Features Affect Perception of AI vs Human Speech**")
     
     # Cloud storage status in sidebar (show always)
     st.sidebar.header("System Status")
@@ -609,8 +609,8 @@ def show_participant_info():
     st.header("Participant Information")
     
     with st.form("participant_form"):
-        age = st.number_input("Age", min_value=18, max_value=100, value=25)
-        mother_tongue = st.text_input("Mother tongue", placeholder="e.g., English, Spanish, Mandarin, etc.")
+        age = st.number_input("Age", min_value=18, max_value=100, value=None)
+        mother_tongue = st.text_input("Mother tongue")
         
         if st.form_submit_button("Start Survey", type="primary"):
             if not mother_tongue.strip():
@@ -722,8 +722,7 @@ def show_follow_up_questions():
                     elif question['type'] == 'text':
                         response = st.text_area(
                             question['text'],
-                            key=f"{current_clip_id}_followup_{feature.replace(' ', '_').lower()}_{question['id']}",
-                            placeholder="Please share your thoughts..."
+                            key=f"{current_clip_id}_followup_{feature.replace(' ', '_').lower()}_{question['id']}"
                         )
                     
                     follow_up_responses[f"{current_clip_id}_followup_{feature.replace(' ', '_').lower()}_{question['id']}"] = response
@@ -758,13 +757,12 @@ def show_final_questions():
     
     with st.form("final_questions_form"):
         comments = st.text_area(
-            "Additional comments about the survey or audio clips (optional)",
-            placeholder="Any observations about linguistic features, audio quality, etc."
+            "Additional comments about the survey or audio clips (optional)"
         )
         
         overall_experience = st.slider(
             "How would you rate your overall experience with this survey?",
-            min_value=1, max_value=7, value=4,
+            min_value=1, max_value=7, value=None,
             help="1 = Very poor, 7 = Excellent"
         )
         
@@ -783,7 +781,7 @@ def show_final_questions():
 def show_completion_page():
     """Show survey completion page"""
     st.success("Survey Completed Successfully!")
-    st.markdown("Thank you for participating in our research on news audio trustworthiness!")
+    st.markdown("Thank you for participating in our research on distinguishing between AI and human newscasters!")
     st.balloons()
     
     if st.button("Take Another Survey"):

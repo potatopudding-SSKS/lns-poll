@@ -20,7 +20,7 @@ st.set_page_config(
     page_title="Survey Admin Portal",
     page_icon="⚙️",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # Data persistence file
@@ -84,7 +84,7 @@ def load_from_google_sheets():
 
 def create_results_dashboard():
     """Create the dashboard for viewing survey results"""
-    st.title("News Audio Trustworthiness Survey - Admin Portal")
+    st.title("Distinguishing between AI and Human Newscasters - Admin Portal")
     
     responses = load_responses()
     
@@ -95,20 +95,22 @@ def create_results_dashboard():
     # Convert to DataFrame for analysis
     df = pd.DataFrame(responses)
     
-    # Sidebar for filtering
-    st.sidebar.header("Filter Options")
+    # Main filtering options in the main area instead of sidebar
+    st.header("Filter Options")
+    col1, col2 = st.columns(2)
     
     # Date range filter
     if len(df) > 0:
         min_date = pd.to_datetime(df['timestamp']).dt.date.min()
         max_date = pd.to_datetime(df['timestamp']).dt.date.max()
         
-        date_range = st.sidebar.date_input(
-            "Select date range",
-            value=(min_date, max_date),
-            min_value=min_date,
-            max_value=max_date
-        )
+        with col1:
+            date_range = st.date_input(
+                "Select date range",
+                value=(min_date, max_date),
+                min_value=min_date,
+                max_value=max_date
+            )
         
         # Filter by date
         df['date'] = pd.to_datetime(df['timestamp']).dt.date
@@ -399,10 +401,12 @@ def main():
         st.info("This portal is for survey administrators only.")
         return
     
-    # Logout button in sidebar
-    if st.sidebar.button("Logout"):
-        st.session_state.admin_authenticated = False
-        st.rerun()
+    # Logout button in main area instead of sidebar
+    col1, col2, col3 = st.columns([1, 1, 8])
+    with col1:
+        if st.button("🔓 Logout"):
+            st.session_state.admin_authenticated = False
+            st.rerun()
     
     # Main admin interface
     create_results_dashboard()
