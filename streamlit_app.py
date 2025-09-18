@@ -30,12 +30,17 @@ DATA_FILE = "survey_responses.pkl"
 
 def load_responses():
     """Load responses with cloud storage support"""
-    # Try cloud storage first
+    # Try cloud storage first - but check for real credentials
     if CLOUD_STORAGE_AVAILABLE and "gcp_service_account" in st.secrets:
-        try:
-            return load_from_google_sheets()
-        except Exception as e:
-            st.warning(f"Cloud storage unavailable, using local storage: {e}")
+        project_id = st.secrets["gcp_service_account"].get("project_id", "")
+        private_key = st.secrets["gcp_service_account"].get("private_key", "")
+        
+        # Check if we have real credentials (not placeholders)
+        if project_id and project_id != "your-project-id" and "BEGIN PRIVATE KEY" in private_key and "..." not in private_key:
+            try:
+                return load_from_google_sheets()
+            except Exception as e:
+                st.warning(f"Cloud storage unavailable, using local storage: {e}")
     
     # Fallback to local storage
     try:
@@ -265,14 +270,21 @@ def save_response(response_data):
     """Save response with cloud storage support"""
     response_data['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    # Try cloud storage first (Google Sheets)
+    # Try cloud storage first (Google Sheets) - but check for real credentials
     if CLOUD_STORAGE_AVAILABLE and "gcp_service_account" in st.secrets:
-        try:
-            save_to_google_sheets(response_data)
-            st.session_state.responses.append(response_data)
-            return
-        except Exception as e:
-            st.warning(f"Cloud storage failed, using local storage: {e}")
+        project_id = st.secrets["gcp_service_account"].get("project_id", "")
+        private_key = st.secrets["gcp_service_account"].get("private_key", "")
+        
+        # Check if we have real credentials (not placeholders)
+        if project_id and project_id != "your-project-id" and "BEGIN PRIVATE KEY" in private_key and "..." not in private_key:
+            try:
+                save_to_google_sheets(response_data)
+                st.session_state.responses.append(response_data)
+                return
+            except Exception as e:
+                st.warning(f"Cloud storage failed, using local storage: {e}")
+        else:
+            st.info("💾 Using local storage (cloud credentials are placeholders)")
     
     # Fallback to local storage
     st.session_state.responses.append(response_data)
@@ -724,13 +736,22 @@ def show_completion_page():
     st.sidebar.header("Survey Controls")
     
     # Cloud storage status
-    if CLOUD_STORAGE_AVAILABLE and "gcp_service_account" in st.secrets:
-        st.sidebar.success("☁️ Cloud Storage: Active")
-    elif CLOUD_STORAGE_AVAILABLE:
-        st.sidebar.warning("☁️ Cloud Storage: Not Configured")
-        st.sidebar.info("Add Google Sheets credentials to Streamlit secrets for web deployment")
+    if CLOUD_STORAGE_AVAILABLE:
+        if "gcp_service_account" in st.secrets:
+            # Check if secrets contain real values (not placeholders)
+            project_id = st.secrets["gcp_service_account"].get("project_id", "")
+            private_key = st.secrets["gcp_service_account"].get("private_key", "")
+            
+            if project_id and project_id != "your-project-id" and "BEGIN PRIVATE KEY" in private_key and "..." not in private_key:
+                st.sidebar.success("☁️ Cloud Storage: Active")
+            else:
+                st.sidebar.warning("☁️ Cloud Storage: Configured with Placeholders")
+                st.sidebar.info("Replace placeholder values with real Google Cloud credentials")
+        else:
+            st.sidebar.warning("☁️ Cloud Storage: Not Configured")
+            st.sidebar.info("Add Google Cloud service account to secrets for web deployment")
     else:
-        st.sidebar.error("☁️ Cloud Storage: Not Available")
+        st.sidebar.error("☁️ Cloud Storage: Libraries Missing")
         st.sidebar.info("Install: pip install gspread google-auth")
     
     # Download results as CSV

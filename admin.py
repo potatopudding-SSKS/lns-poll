@@ -28,12 +28,17 @@ DATA_FILE = "survey_responses.pkl"
 
 def load_responses():
     """Load responses with cloud storage support"""
-    # Try cloud storage first
+    # Try cloud storage first - but check for real credentials
     if CLOUD_STORAGE_AVAILABLE and "gcp_service_account" in st.secrets:
-        try:
-            return load_from_google_sheets()
-        except Exception as e:
-            st.warning(f"Cloud storage unavailable, using local storage: {e}")
+        project_id = st.secrets["gcp_service_account"].get("project_id", "")
+        private_key = st.secrets["gcp_service_account"].get("private_key", "")
+        
+        # Check if we have real credentials (not placeholders)
+        if project_id and project_id != "your-project-id" and "BEGIN PRIVATE KEY" in private_key and "..." not in private_key:
+            try:
+                return load_from_google_sheets()
+            except Exception as e:
+                st.warning(f"Cloud storage unavailable, using local storage: {e}")
     
     # Fallback to local storage
     try:
