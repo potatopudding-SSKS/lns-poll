@@ -22,7 +22,7 @@ st.set_page_config(
     page_title="Distinguishing between AI and Human Newscasters",
     page_icon="🎤",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # Data persistence file
@@ -53,13 +53,7 @@ def load_responses():
             try:
                 return load_from_google_sheets()
             except Exception as e:
-                # More specific error handling
-                if "Spreadsheet not found" in str(e) or "does not exist" in str(e):
-                    st.error("📊 Google Sheets: Spreadsheet not found. Please check the spreadsheet ID in secrets.")
-                elif "permission" in str(e).lower() or "access" in str(e).lower():
-                    st.error("🔐 Google Sheets: Permission denied. Please share the spreadsheet with the service account email.")
-                else:
-                    st.warning(f"☁️ Cloud storage connection failed, using local storage: {e}")
+                pass  # Silently fall back to local storage
     
     # Fallback to local storage
     try:
@@ -68,7 +62,6 @@ def load_responses():
                 return pickle.load(f)
         return []
     except Exception as e:
-        st.error(f"Error loading data: {e}")
         return []
 
 def load_from_google_sheets():
@@ -109,7 +102,7 @@ def save_responses(responses):
         with open(DATA_FILE, 'wb') as f:
             pickle.dump(responses, f)
     except Exception as e:
-        st.error(f"Error saving data: {e}")
+        pass  # Silently ignore save errors
 
 # Initialize session state for storing responses
 if 'responses' not in st.session_state:
@@ -301,9 +294,7 @@ def save_response(response_data):
                 st.session_state.responses.append(response_data)
                 return
             except Exception as e:
-                st.warning(f"Cloud storage failed, using local storage: {e}")
-        else:
-            st.info("💾 Using local storage (cloud credentials are placeholders)")
+                pass  # Silently fall back to local storage
     
     # Fallback to local storage
     st.session_state.responses.append(response_data)
@@ -523,51 +514,8 @@ def main():
     st.markdown('<h1 class="main-header">Distinguishing between AI and Human Newscasters</h1>', unsafe_allow_html=True)
     st.markdown("**Research Study: How Linguistic Features Affect Perception of AI vs Human Speech**")
     
-    # Cloud storage status in sidebar (show always)
-    st.sidebar.header("System Status")
-    
-    if CLOUD_STORAGE_AVAILABLE:
-        try:
-            if "gcp_service_account" in st.secrets:
-                # Check if secrets contain real values (not placeholders)
-                project_id = st.secrets["gcp_service_account"].get("project_id", "")
-                private_key = st.secrets["gcp_service_account"].get("private_key", "")
-                client_email = st.secrets["gcp_service_account"].get("client_email", "")
-                
-                # More robust validation for real credentials
-                is_real_credentials = (
-                    project_id and 
-                    project_id not in ["your-project-id", "placeholder-project"] and
-                    private_key and 
-                    "BEGIN PRIVATE KEY" in private_key and 
-                    "..." not in private_key and
-                    len(private_key) > 100 and  # Real private keys are long
-                    client_email and 
-                    "@" in client_email and
-                    ".iam.gserviceaccount.com" in client_email
-                )
-                
-                if is_real_credentials:
-                    st.sidebar.success("☁️ Cloud Storage: Active")
-                else:
-                    st.sidebar.warning("☁️ Cloud Storage: Configured with Placeholders")
-                    st.sidebar.info("Replace placeholder values with real Google Cloud credentials")
-            else:
-                st.sidebar.warning("☁️ Cloud Storage: Not Configured")
-                st.sidebar.info("Add Google Cloud service account to secrets for web deployment")
-        except Exception as e:
-            st.sidebar.error("☁️ Cloud Storage: Configuration Error")
-            st.sidebar.info(f"Error reading secrets: {str(e)}")
-    else:
-        st.sidebar.error("☁️ Cloud Storage: Libraries Missing")
-        st.sidebar.info("Install: pip install gspread google-auth")
-    
-    # Display response count
-    st.sidebar.metric("Current Responses", len(st.session_state.responses))
-
-    # Owner authentication for results
-    st.sidebar.header("Owner Access")
-    owner_password = st.sidebar.text_input("Enter owner password to view results", type="password")
+    # Simple owner authentication
+    owner_password = st.text_input("Owner password (optional - for viewing results)", type="password", key="owner_auth")
     is_owner = owner_password == "letmein"
 
     # Create tabs for survey and results
@@ -789,26 +737,6 @@ def show_completion_page():
         st.session_state.survey_step = 'participant_info'
         st.session_state.current_clip = 0
         st.session_state.current_responses = {}
-        st.rerun()
-    
-    # Sidebar with additional features (moved cloud storage status to main())
-    st.sidebar.header("Survey Controls")
-    
-    # Download results as CSV
-    if st.session_state.responses:
-        df = pd.DataFrame(st.session_state.responses)
-        csv = df.to_csv(index=False)
-        st.sidebar.download_button(
-            label="Download Results as CSV",
-            data=csv,
-            file_name=f"survey_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-            mime="text/csv"
-        )
-    
-    # Clear all responses
-    if st.sidebar.button("Clear All Responses", type="secondary"):
-        st.session_state.responses = []
-        st.sidebar.success("All responses cleared!")
         st.rerun()
 
 if __name__ == "__main__":
