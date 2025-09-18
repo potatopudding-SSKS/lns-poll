@@ -6,15 +6,54 @@ from datetime import datetime
 import json
 import os
 import glob
+import pickle
 from streamlit_sortables import sort_items
 
 # Set page configuration
 st.set_page_config(
     page_title="News Audio Trustworthiness Survey",
-    page_icon="📊",
+    page_icon="�",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Data persistence file
+DATA_FILE = "survey_responses.pkl"
+
+def load_responses():
+    """Load responses from persistent storage"""
+    try:
+        if os.path.exists(DATA_FILE):
+            with open(DATA_FILE, 'rb') as f:
+                return pickle.load(f)
+        return []
+    except Exception as e:
+        st.error(f"Error loading data: {e}")
+        return []
+
+def save_responses(responses):
+    """Save responses to persistent storage"""
+    try:
+        with open(DATA_FILE, 'wb') as f:
+            pickle.dump(responses, f)
+    except Exception as e:
+        st.error(f"Error saving data: {e}")
+
+# Initialize session state for storing responses
+if 'responses' not in st.session_state:
+    st.session_state.responses = load_responses()
+
+if 'survey_step' not in st.session_state:
+    st.session_state.survey_step = 'participant_info'
+
+if 'current_clip' not in st.session_state:
+    st.session_state.current_clip = 0
+
+if 'current_responses' not in st.session_state:
+    st.session_state.current_responses = {}
+
+if 'ranking_complete' not in st.session_state:
+    st.session_state.ranking_complete = {}
 
 # Clean CSS for better styling
 st.markdown("""
@@ -153,25 +192,18 @@ def get_audio_files():
                 "title": title,
                 "questions": [
                     {
+                        "id": f"naturalness_{len(audio_files) + 1}",
+                        "text": "How natural does the speech sound?",
+                        "type": "scale",
+                        "scale": [1, 2, 3, 4, 5],
+                        "labels": ["Very unnatural", "Very natural"]
+                    },
+                    {
                         "id": f"trustworthiness_{len(audio_files) + 1}",
-                        "text": "How trustworthy does this news report sound?",
+                        "text": "How trustworthy/credible is it?",
                         "type": "scale",
-                        "scale": [1, 2, 3, 4, 5, 6, 7],
-                        "labels": ["Not trustworthy at all", "Extremely trustworthy"]
-                    },
-                    {
-                        "id": f"clarity_{len(audio_files) + 1}", 
-                        "text": "How clear and understandable is the speaker?",
-                        "type": "scale",
-                        "scale": [1, 2, 3, 4, 5, 6, 7],
-                        "labels": ["Very unclear", "Very clear"]
-                    },
-                    {
-                        "id": f"credibility_{len(audio_files) + 1}",
-                        "text": "How credible does the information seem?",
-                        "type": "scale", 
-                        "scale": [1, 2, 3, 4, 5, 6, 7],
-                        "labels": ["Not credible at all", "Extremely credible"]
+                        "scale": [1, 2, 3, 4, 5],
+                        "labels": ["Not trustworthy/credible at all", "Very trustworthy/credible"]
                     }
                 ]
             }
@@ -181,26 +213,11 @@ def get_audio_files():
 # Get audio clips dynamically
 AUDIO_CLIPS = get_audio_files()
 
-# Initialize session state for storing responses
-if 'responses' not in st.session_state:
-    st.session_state.responses = []
-
-if 'survey_step' not in st.session_state:
-    st.session_state.survey_step = 'participant_info'
-
-if 'current_clip' not in st.session_state:
-    st.session_state.current_clip = 0
-
-if 'current_responses' not in st.session_state:
-    st.session_state.current_responses = {}
-
-if 'ranking_complete' not in st.session_state:
-    st.session_state.ranking_complete = {}
-
 def save_response(response_data):
-    """Save response to session state"""
+    """Save response to session state and persistent storage"""
     response_data['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     st.session_state.responses.append(response_data)
+    save_responses(st.session_state.responses)
 
 def create_drag_drop_ranking(clip_id):
     """Create drag and drop ranking interface using streamlit-sortables"""
@@ -279,19 +296,19 @@ def display_results():
     for clip_id, clip_data in AUDIO_CLIPS.items():
         st.subheader(f"Results for {clip_data['title']}")
         
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns(2)
         
         # Get the clip number from clip_id
         clip_num = clip_id.replace('clip_', '')
         
-        # Trustworthiness results
-        trust_col = f"trustworthiness_{clip_num}"
-        if trust_col in df.columns:
+        # Naturalness results
+        naturalness_col = f"naturalness_{clip_num}"
+        if naturalness_col in df.columns:
             with col1:
-                st.write("**Trustworthiness Ratings**")
-                trust_counts = df[trust_col].value_counts().sort_index()
-                fig1 = px.bar(x=trust_counts.index, y=trust_counts.values,
-                             title="Trustworthiness Distribution",
+                st.write("**Speech Naturalness Ratings**")
+                naturalness_counts = df[naturalness_col].value_counts().sort_index()
+                fig1 = px.bar(x=naturalness_counts.index, y=naturalness_counts.values,
+                             title="Speech Naturalness Distribution",
                              labels={'x': 'Rating', 'y': 'Count'},
                              color_discrete_sequence=[color_palette[0]])
                 fig1.update_layout(
@@ -301,14 +318,14 @@ def display_results():
                 )
                 st.plotly_chart(fig1, use_container_width=True)
         
-        # Clarity results  
-        clarity_col = f"clarity_{clip_num}"
-        if clarity_col in df.columns:
+        # Trustworthiness results  
+        trust_col = f"trustworthiness_{clip_num}"
+        if trust_col in df.columns:
             with col2:
-                st.write("**Clarity Ratings**")
-                clarity_counts = df[clarity_col].value_counts().sort_index()
-                fig2 = px.bar(x=clarity_counts.index, y=clarity_counts.values,
-                             title="Clarity Distribution", 
+                st.write("**Trustworthiness/Credibility Ratings**")
+                trust_counts = df[trust_col].value_counts().sort_index()
+                fig2 = px.bar(x=trust_counts.index, y=trust_counts.values,
+                             title="Trustworthiness/Credibility Distribution", 
                              labels={'x': 'Rating', 'y': 'Count'},
                              color_discrete_sequence=[color_palette[1]])
                 fig2.update_layout(
@@ -317,23 +334,6 @@ def display_results():
                     font_color='white'
                 )
                 st.plotly_chart(fig2, use_container_width=True)
-        
-        # Credibility results
-        cred_col = f"credibility_{clip_num}"
-        if cred_col in df.columns:
-            with col3:
-                st.write("**Credibility Ratings**")
-                cred_counts = df[cred_col].value_counts().sort_index()
-                fig3 = px.bar(x=cred_counts.index, y=cred_counts.values,
-                             title="Credibility Distribution",
-                             labels={'x': 'Rating', 'y': 'Count'},
-                             color_discrete_sequence=[color_palette[2]])
-                fig3.update_layout(
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    font_color='white'
-                )
-                st.plotly_chart(fig3, use_container_width=True)
         
         # Linguistic features ranking analysis
         st.write("**Linguistic Features Influence Ranking**")
@@ -380,12 +380,12 @@ def display_results():
     st.subheader("Overall Analysis")
     
     # Native language distribution
-    if 'native_language' in df.columns:
+    if 'mother_tongue' in df.columns:
         col1, col2 = st.columns(2)
         with col1:
-            lang_counts = df['native_language'].value_counts()
+            lang_counts = df['mother_tongue'].value_counts()
             fig_lang = px.pie(values=lang_counts.values, names=lang_counts.index,
-                             title="Participant Native Languages",
+                             title="Participant Mother Tongues",
                              color_discrete_sequence=color_palette)
             fig_lang.update_layout(
                 plot_bgcolor='rgba(0,0,0,0)',
@@ -395,18 +395,17 @@ def display_results():
             st.plotly_chart(fig_lang, use_container_width=True)
         
         with col2:
-            if 'overall_familiarity' in df.columns:
-                fam_counts = df['overall_familiarity'].value_counts().sort_index()
-                fig_fam = px.bar(x=fam_counts.index, y=fam_counts.values,
-                               title="News Media Analysis Familiarity",
-                               labels={'x': 'Familiarity Level', 'y': 'Count'},
+            if 'age' in df.columns:
+                fig_age = px.histogram(df, x='age', nbins=10,
+                               title="Age Distribution",
+                               labels={'age': 'Age', 'count': 'Count'},
                                color_discrete_sequence=[color_palette[4]])
-                fig_fam.update_layout(
+                fig_age.update_layout(
                     plot_bgcolor='rgba(0,0,0,0)',
                     paper_bgcolor='rgba(0,0,0,0)',
                     font_color='white'
                 )
-                st.plotly_chart(fig_fam, use_container_width=True)
+                st.plotly_chart(fig_age, use_container_width=True)
     
     # Raw data
     with st.expander("View Raw Data"):
@@ -448,8 +447,6 @@ def main():
             show_ranking_interface()
         elif st.session_state.survey_step == 'follow_up':
             show_follow_up_questions()
-        elif st.session_state.survey_step == 'final_questions':
-            show_final_questions()
         elif st.session_state.survey_step == 'completed':
             show_completion_page()
 
@@ -462,26 +459,21 @@ def show_participant_info():
     st.header("Participant Information")
     
     with st.form("participant_form"):
-        participant_id = st.text_input("Participant ID (optional)", placeholder="Enter a unique identifier")
         age = st.number_input("Age", min_value=18, max_value=100, value=25)
-        native_language = st.selectbox("Native Language", 
-                                     ["English", "Spanish", "French", "German", "Chinese", "Other"])
-        overall_familiarity = st.slider(
-            "How familiar are you with news media analysis?",
-            min_value=1, max_value=7, value=4,
-            help="1 = Not familiar at all, 7 = Very familiar"
-        )
+        mother_tongue = st.text_input("Mother tongue", placeholder="e.g., English, Spanish, Mandarin, etc.")
         
         if st.form_submit_button("Start Survey", type="primary"):
-            st.session_state.current_responses = {
-                'participant_id': participant_id if participant_id else f"anon_{len(st.session_state.responses)+1}",
-                'age': age,
-                'native_language': native_language,
-                'overall_familiarity': overall_familiarity
-            }
-            st.session_state.survey_step = 'audio_questions'
-            st.session_state.current_clip = 0
-            st.rerun()
+            if not mother_tongue.strip():
+                st.error("Please enter your mother tongue.")
+            else:
+                st.session_state.current_responses = {
+                    'participant_id': f"participant_{len(st.session_state.responses)+1}",
+                    'age': age,
+                    'mother_tongue': mother_tongue.strip()
+                }
+                st.session_state.survey_step = 'audio_questions'
+                st.session_state.current_clip = 0
+                st.rerun()
 
 def show_audio_questions():
     """Show audio questions for current clip"""
@@ -554,88 +546,61 @@ def show_ranking_interface():
             st.rerun()
 
 def show_follow_up_questions():
-    """Show follow-up questions based on top 2 most influential features"""
+    """Show follow-up questions for all linguistic features"""
     clip_ids = list(AUDIO_CLIPS.keys())
     current_clip_id = clip_ids[st.session_state.current_clip]
-    top_features = st.session_state.current_responses.get(f"{current_clip_id}_top_features", [])
     
-    if top_features and len(top_features) >= 2:
-        st.markdown(f'<div class="follow-up-section">', unsafe_allow_html=True)
-        st.subheader(f"Follow-up Questions")
-        st.markdown(f"You ranked **{top_features[0]}** and **{top_features[1]}** as your most influential features. Please answer these specific questions:")
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="follow-up-section">', unsafe_allow_html=True)
+    st.subheader(f"Follow-up Questions")
+    st.markdown(f"Please answer the following questions about each linguistic feature:")
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    with st.form(f"followup_form_{current_clip_id}"):
+        follow_up_responses = {}
         
-        with st.form(f"followup_form_{current_clip_id}"):
-            follow_up_responses = {}
-            
-            # Questions for first most influential feature
-            if top_features[0] in FOLLOW_UP_QUESTIONS:
-                st.markdown(f"### Questions about **{top_features[0]}** (Most Influential)")
-                for question in FOLLOW_UP_QUESTIONS[top_features[0]]:
+        # Questions for all linguistic features
+        for feature in LINGUISTIC_FEATURES:
+            if feature in FOLLOW_UP_QUESTIONS:
+                st.markdown(f"### Questions about **{feature}**")
+                for question in FOLLOW_UP_QUESTIONS[feature]:
                     if question['type'] == 'radio':
                         response = st.radio(
                             question['text'],
                             options=question['options'],
-                            key=f"{current_clip_id}_followup_1st_{question['id']}"
+                            key=f"{current_clip_id}_followup_{feature.replace(' ', '_').lower()}_{question['id']}"
                         )
                     elif question['type'] == 'text':
                         response = st.text_area(
                             question['text'],
-                            key=f"{current_clip_id}_followup_1st_{question['id']}",
+                            key=f"{current_clip_id}_followup_{feature.replace(' ', '_').lower()}_{question['id']}",
                             placeholder="Please share your thoughts..."
                         )
                     
-                    follow_up_responses[f"{current_clip_id}_followup_1st_{question['id']}"] = response
-            
-            st.markdown("---")
-            
-            # Questions for second most influential feature
-            if top_features[1] in FOLLOW_UP_QUESTIONS:
-                st.markdown(f"### Questions about **{top_features[1]}** (Second Most Influential)")
-                for question in FOLLOW_UP_QUESTIONS[top_features[1]]:
-                    if question['type'] == 'radio':
-                        response = st.radio(
-                            question['text'],
-                            options=question['options'],
-                            key=f"{current_clip_id}_followup_2nd_{question['id']}"
-                        )
-                    elif question['type'] == 'text':
-                        response = st.text_area(
-                            question['text'],
-                            key=f"{current_clip_id}_followup_2nd_{question['id']}",
-                            placeholder="Please share your thoughts..."
-                        )
-                    
-                    follow_up_responses[f"{current_clip_id}_followup_2nd_{question['id']}"] = response
-            
-            col1, col2 = st.columns([1, 1])
-            
-            with col1:
-                if st.form_submit_button("← Back to Ranking", key="back_to_ranking"):
-                    st.session_state.survey_step = 'ranking'
-                    st.rerun()
-            
-            with col2:
-                if st.form_submit_button("Next →", type="primary", key="next_clip"):
-                    # Save follow-up responses
-                    st.session_state.current_responses.update(follow_up_responses)
-                    
-                    # Move to next clip or finish
-                    if st.session_state.current_clip < len(AUDIO_CLIPS) - 1:
-                        st.session_state.current_clip += 1
-                        st.session_state.survey_step = 'audio_questions'
-                    else:
-                        # Add final questions
-                        st.session_state.survey_step = 'final_questions'
-                    st.rerun()
-    else:
-        # Skip to next clip if no follow-up questions
-        if st.session_state.current_clip < len(AUDIO_CLIPS) - 1:
-            st.session_state.current_clip += 1
-            st.session_state.survey_step = 'audio_questions'
-        else:
-            st.session_state.survey_step = 'final_questions'
-        st.rerun()
+                    follow_up_responses[f"{current_clip_id}_followup_{feature.replace(' ', '_').lower()}_{question['id']}"] = response
+                
+                st.markdown("---")
+        
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            if st.form_submit_button("← Back to Ranking", key="back_to_ranking"):
+                st.session_state.survey_step = 'ranking'
+                st.rerun()
+        
+        with col2:
+            if st.form_submit_button("Next →", type="primary", key="next_clip"):
+                # Save follow-up responses
+                st.session_state.current_responses.update(follow_up_responses)
+                
+                # Move to next clip or finish
+                if st.session_state.current_clip < len(AUDIO_CLIPS) - 1:
+                    st.session_state.current_clip += 1
+                    st.session_state.survey_step = 'audio_questions'
+                else:
+                    # Complete survey without final questions
+                    save_response(st.session_state.current_responses)
+                    st.session_state.survey_step = 'completed'
+                st.rerun()
 
 def show_final_questions():
     """Show final survey questions"""
