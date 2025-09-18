@@ -3,13 +3,99 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime
 import json
+import os
 
 # Set page configuration
 st.set_page_config(
-    page_title="Survey & Poll App",
-    page_icon="📊",
+    page_title="News Audio Trustworthiness Survey",
+    page_icon="🎙️",
     layout="wide"
 )
+
+# Hardcoded audio clips and questions
+AUDIO_CLIPS = {
+    "clip1": {
+        "file": "audio/news_clip_1.mp3",  # Place your audio files in an 'audio' folder
+        "title": "News Report 1: Economic Update",
+        "questions": [
+            {
+                "id": "trustworthiness_1",
+                "text": "How trustworthy does this news report sound?",
+                "type": "scale",
+                "scale": [1, 2, 3, 4, 5, 6, 7],
+                "labels": ["Not trustworthy at all", "Extremely trustworthy"]
+            },
+            {
+                "id": "clarity_1", 
+                "text": "How clear and understandable is the speaker?",
+                "type": "scale",
+                "scale": [1, 2, 3, 4, 5, 6, 7],
+                "labels": ["Very unclear", "Very clear"]
+            },
+            {
+                "id": "credibility_1",
+                "text": "How credible does the information seem?",
+                "type": "scale", 
+                "scale": [1, 2, 3, 4, 5, 6, 7],
+                "labels": ["Not credible at all", "Extremely credible"]
+            }
+        ]
+    },
+    "clip2": {
+        "file": "audio/news_clip_2.mp3",
+        "title": "News Report 2: Weather Forecast",
+        "questions": [
+            {
+                "id": "trustworthiness_2",
+                "text": "How trustworthy does this news report sound?",
+                "type": "scale",
+                "scale": [1, 2, 3, 4, 5, 6, 7],
+                "labels": ["Not trustworthy at all", "Extremely trustworthy"]
+            },
+            {
+                "id": "clarity_2",
+                "text": "How clear and understandable is the speaker?", 
+                "type": "scale",
+                "scale": [1, 2, 3, 4, 5, 6, 7],
+                "labels": ["Very unclear", "Very clear"]
+            },
+            {
+                "id": "credibility_2",
+                "text": "How credible does the information seem?",
+                "type": "scale",
+                "scale": [1, 2, 3, 4, 5, 6, 7], 
+                "labels": ["Not credible at all", "Extremely credible"]
+            }
+        ]
+    },
+    "clip3": {
+        "file": "audio/news_clip_3.mp3",
+        "title": "News Report 3: Sports Update",
+        "questions": [
+            {
+                "id": "trustworthiness_3",
+                "text": "How trustworthy does this news report sound?",
+                "type": "scale",
+                "scale": [1, 2, 3, 4, 5, 6, 7],
+                "labels": ["Not trustworthy at all", "Extremely trustworthy"]
+            },
+            {
+                "id": "clarity_3",
+                "text": "How clear and understandable is the speaker?",
+                "type": "scale", 
+                "scale": [1, 2, 3, 4, 5, 6, 7],
+                "labels": ["Very unclear", "Very clear"]
+            },
+            {
+                "id": "credibility_3",
+                "text": "How credible does the information seem?",
+                "type": "scale",
+                "scale": [1, 2, 3, 4, 5, 6, 7],
+                "labels": ["Not credible at all", "Extremely credible"]
+            }
+        ]
+    }
+}
 
 # Initialize session state for storing responses
 if 'responses' not in st.session_state:
@@ -28,120 +114,125 @@ def display_results():
     
     df = pd.DataFrame(st.session_state.responses)
     
-    st.subheader("📈 Survey Results")
+    st.subheader("📈 News Audio Trustworthiness Survey Results")
     
     # Display total responses
     st.metric("Total Responses", len(df))
     
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        # Favorite programming language chart
-        if 'favorite_language' in df.columns:
-            st.subheader("Favorite Programming Language")
-            lang_counts = df['favorite_language'].value_counts()
-            fig1 = px.pie(values=lang_counts.values, names=lang_counts.index, 
-                         title="Programming Language Preferences")
-            st.plotly_chart(fig1, use_container_width=True)
-    
-    with col2:
-        # Experience level chart
-        if 'experience_level' in df.columns:
-            st.subheader("Experience Level Distribution")
-            exp_counts = df['experience_level'].value_counts()
-            fig2 = px.bar(x=exp_counts.index, y=exp_counts.values,
-                         title="Experience Level Distribution",
-                         labels={'x': 'Experience Level', 'y': 'Count'})
-            st.plotly_chart(fig2, use_container_width=True)
-    
-    # Rating distribution
-    if 'satisfaction_rating' in df.columns:
-        st.subheader("Satisfaction Rating Distribution")
-        rating_counts = df['satisfaction_rating'].value_counts().sort_index()
-        fig3 = px.histogram(df, x='satisfaction_rating', nbins=10,
-                           title="Satisfaction Rating Distribution",
-                           labels={'satisfaction_rating': 'Rating (1-10)', 'count': 'Frequency'})
-        st.plotly_chart(fig3, use_container_width=True)
+    # Create charts for each audio clip
+    for clip_id, clip_data in AUDIO_CLIPS.items():
+        st.subheader(f"Results for {clip_data['title']}")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        # Trustworthiness results
+        trust_col = f"trustworthiness_{clip_id.replace('clip', '')}"
+        if trust_col in df.columns:
+            with col1:
+                st.write("**Trustworthiness Ratings**")
+                trust_counts = df[trust_col].value_counts().sort_index()
+                fig1 = px.bar(x=trust_counts.index, y=trust_counts.values,
+                             title="Trustworthiness Distribution",
+                             labels={'x': 'Rating', 'y': 'Count'})
+                st.plotly_chart(fig1, use_container_width=True)
+        
+        # Clarity results  
+        clarity_col = f"clarity_{clip_id.replace('clip', '')}"
+        if clarity_col in df.columns:
+            with col2:
+                st.write("**Clarity Ratings**")
+                clarity_counts = df[clarity_col].value_counts().sort_index()
+                fig2 = px.bar(x=clarity_counts.index, y=clarity_counts.values,
+                             title="Clarity Distribution", 
+                             labels={'x': 'Rating', 'y': 'Count'})
+                st.plotly_chart(fig2, use_container_width=True)
+        
+        # Credibility results
+        cred_col = f"credibility_{clip_id.replace('clip', '')}"
+        if cred_col in df.columns:
+            with col3:
+                st.write("**Credibility Ratings**")
+                cred_counts = df[cred_col].value_counts().sort_index()
+                fig3 = px.bar(x=cred_counts.index, y=cred_counts.values,
+                             title="Credibility Distribution",
+                             labels={'x': 'Rating', 'y': 'Count'})
+                st.plotly_chart(fig3, use_container_width=True)
+        
+        st.divider()
     
     # Raw data
     with st.expander("View Raw Data"):
         st.dataframe(df)
 
 def main():
-    st.title("📊 Survey & Poll Application")
-    st.markdown("Welcome to our interactive survey! Please fill out the form below.")
+    st.title("🎙️ News Audio Trustworthiness Survey")
+    st.markdown("**Research Study: How Linguistic Features Affect News Audio Trustworthiness**")
+    st.markdown("Please listen to each audio clip carefully and answer the questions about your perception of trustworthiness.")
     
     # Owner authentication for results
     st.sidebar.header("🔒 Owner Access")
     owner_password = st.sidebar.text_input("Enter owner password to view results", type="password")
     is_owner = owner_password == "letmein"  # Change this password as needed
 
-    # Audio file upload (owner only)
-    st.sidebar.header("🎵 Audio for Poll Question")
-    if is_owner:
-        audio_file = st.sidebar.file_uploader("Upload an audio file (mp3, wav)", type=["mp3", "wav"])
-        if audio_file:
-            st.session_state.poll_audio = audio_file.read()
-            st.session_state.poll_audio_type = audio_file.type
-    # If not owner, use previous audio if available
-    poll_audio = st.session_state.get("poll_audio", None)
-    poll_audio_type = st.session_state.get("poll_audio_type", None)
-
     # Create tabs for survey and results
-    tab1, tab2 = st.tabs(["📝 Take Survey", "📊 View Results"])
+    if is_owner:
+        tab1, tab2 = st.tabs(["📝 Take Survey", "📊 View Results"])
+    else:
+        tab1, = st.tabs(["📝 Take Survey"])
 
     with tab1:
         st.header("Survey Form")
-
-        # Embed audio in the question if available
-        if poll_audio and poll_audio_type:
-            st.audio(poll_audio, format=poll_audio_type)
-            st.markdown("**Listen to the audio and answer the question below:**")
-
-        with st.form("survey_form"):
-            # Personal Information
-            st.subheader("👤 Personal Information")
-            name = st.text_input("Name (optional)")
-            age = st.number_input("Age", min_value=13, max_value=100, value=25)
+        
+        with st.form("trustworthiness_survey"):
+            # Participant information
+            st.subheader("👤 Participant Information")
+            participant_id = st.text_input("Participant ID (optional)", placeholder="Enter a unique identifier")
+            age = st.number_input("Age", min_value=18, max_value=100, value=25)
+            native_language = st.selectbox("Native Language", 
+                                         ["English", "Spanish", "French", "German", "Chinese", "Other"])
             
-
-            # Multiple choice question (now with audio context)
-            st.subheader("💻 Poll Question")
-            favorite_language = st.selectbox(
-                "What's your answer to the audio question? (Choose one)",
-                ["Python", "JavaScript", "Java", "C++", "Go", "Rust", "Other"]
+            st.divider()
+            
+            # Collect responses for all audio clips
+            responses = {}
+            
+            for clip_id, clip_data in AUDIO_CLIPS.items():
+                st.subheader(f"🎵 {clip_data['title']}")
+                
+                # Try to display audio file if it exists
+                if os.path.exists(clip_data['file']):
+                    st.audio(clip_data['file'])
+                else:
+                    st.warning(f"Audio file not found: {clip_data['file']}")
+                    st.info("Please place your audio files in the 'audio' folder with the correct names.")
+                
+                st.markdown("**Please listen to the audio clip above and answer the following questions:**")
+                
+                # Display questions for this clip
+                for question in clip_data['questions']:
+                    if question['type'] == 'scale':
+                        response = st.select_slider(
+                            question['text'],
+                            options=question['scale'],
+                            format_func=lambda x: f"{x} - {question['labels'][0] if x == 1 else question['labels'][1] if x == 7 else ''}",
+                            key=f"{clip_id}_{question['id']}"
+                        )
+                        responses[question['id']] = response
+                
+                st.divider()
+            
+            # Additional questions
+            st.subheader("📝 Additional Information")
+            overall_familiarity = st.slider(
+                "How familiar are you with news media analysis?",
+                min_value=1, max_value=7, value=4,
+                help="1 = Not familiar at all, 7 = Very familiar"
             )
             
-            # Radio buttons
-            experience_level = st.radio(
-                "What's your programming experience level?",
-                ["Beginner (0-1 years)", "Intermediate (2-5 years)", 
-                 "Advanced (5+ years)", "Expert (10+ years)"]
+            comments = st.text_area(
+                "Additional comments about the survey or audio clips (optional)",
+                placeholder="Any observations about linguistic features, audio quality, etc."
             )
-            
-            # Checkboxes for multiple selections
-            st.subheader("🛠️ Technologies Used")
-            technologies = st.multiselect(
-                "Which technologies do you use? (Select all that apply)",
-                ["React", "Vue.js", "Angular", "Django", "Flask", "FastAPI", 
-                 "Node.js", "Express", "Docker", "Kubernetes", "AWS", "Azure"]
-            )
-            
-            # Slider for rating
-            satisfaction_rating = st.slider(
-                "Rate your satisfaction with current tools (1-10)",
-                min_value=1, max_value=10, value=7
-            )
-            
-            # Text area for feedback
-            st.subheader("💭 Feedback")
-            feedback = st.text_area(
-                "Any additional comments or suggestions?",
-                placeholder="Share your thoughts here..."
-            )
-            
-            # Yes/No question
-            newsletter = st.checkbox("Would you like to subscribe to our newsletter?")
             
             # Submit button
             submitted = st.form_submit_button("Submit Survey", type="primary")
@@ -149,26 +240,22 @@ def main():
             if submitted:
                 # Collect all form data
                 response_data = {
-                    'name': name if name else "Anonymous",
+                    'participant_id': participant_id if participant_id else f"anon_{len(st.session_state.responses)+1}",
                     'age': age,
-                    'favorite_language': favorite_language,
-                    'experience_level': experience_level,
-                    'technologies': ', '.join(technologies) if technologies else "None",
-                    'satisfaction_rating': satisfaction_rating,
-                    'feedback': feedback,
-                    'newsletter_subscription': newsletter
+                    'native_language': native_language,
+                    'overall_familiarity': overall_familiarity,
+                    'comments': comments,
+                    **responses  # Add all the audio clip responses
                 }
                 
                 # Save response
                 save_response(response_data)
-                st.success("Thank you for your response! 🎉")
+                st.success("Thank you for participating in our research! 🎉")
                 st.balloons()
-    
-    with tab2:
-        if is_owner:
+
+    if is_owner:
+        with tab2:
             display_results()
-        else:
-            st.warning("Results are restricted to the survey owner.")
     
     # Sidebar with additional features
     st.sidebar.header("📋 Survey Controls")
