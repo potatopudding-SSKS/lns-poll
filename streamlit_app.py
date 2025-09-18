@@ -11,7 +11,7 @@ from streamlit_sortables import sort_items
 # Set page configuration
 st.set_page_config(
     page_title="News Audio Trustworthiness Survey",
-    page_icon="🎙️",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -220,7 +220,7 @@ def create_drag_drop_ranking(clip_id):
         st.markdown("**Your Current Ranking:**")
         for i, item in enumerate(sorted_items):
             if i < 2:
-                st.markdown(f"🏆 **{i+1}. {item}** *(will get follow-up questions)*")
+                st.markdown(f"**{i+1}. {item}** *(will get follow-up questions)*")
             else:
                 st.markdown(f"{i+1}. {item}")
         
@@ -267,7 +267,7 @@ def display_results():
     
     df = pd.DataFrame(st.session_state.responses)
     
-    st.subheader("📈 News Audio Trustworthiness Survey Results")
+    st.subheader("News Audio Trustworthiness Survey Results")
     
     # Display total responses
     st.metric("Total Responses", len(df))
@@ -377,7 +377,7 @@ def display_results():
         st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
     
     # Overall analysis across all clips
-    st.subheader("📊 Overall Analysis")
+    st.subheader("Overall Analysis")
     
     # Native language distribution
     if 'native_language' in df.columns:
@@ -413,19 +413,19 @@ def display_results():
         st.dataframe(df, use_container_width=True)
 
 def main():
-    st.markdown('<h1 class="main-header">🎙️ News Audio Trustworthiness Survey</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">News Audio Trustworthiness Survey</h1>', unsafe_allow_html=True)
     st.markdown("**Research Study: How Linguistic Features Affect News Audio Trustworthiness**")
     
     # Owner authentication for results
-    st.sidebar.header("🔒 Owner Access")
+    st.sidebar.header("Owner Access")
     owner_password = st.sidebar.text_input("Enter owner password to view results", type="password")
     is_owner = owner_password == "letmein"
 
     # Create tabs for survey and results
     if is_owner:
-        tab1, tab2 = st.tabs(["📝 Take Survey", "📊 View Results"])
+        tab1, tab2 = st.tabs(["Take Survey", "View Results"])
     else:
-        tab1, = st.tabs(["📝 Take Survey"])
+        tab1, = st.tabs(["Take Survey"])
 
     with tab1:
         if not AUDIO_CLIPS:
@@ -459,7 +459,7 @@ def main():
 
 def show_participant_info():
     """Show participant information form"""
-    st.header("👤 Participant Information")
+    st.header("Participant Information")
     
     with st.form("participant_form"):
         participant_id = st.text_input("Participant ID (optional)", placeholder="Enter a unique identifier")
@@ -490,7 +490,7 @@ def show_audio_questions():
     clip_data = AUDIO_CLIPS[current_clip_id]
     
     st.markdown(f'<div class="audio-section">', unsafe_allow_html=True)
-    st.subheader(f"🎵 {clip_data['title']}")
+    st.subheader(f"{clip_data['title']}")
     
     # Display audio file
     if os.path.exists(clip_data['file']):
@@ -526,12 +526,12 @@ def show_ranking_interface():
     clip_ids = list(AUDIO_CLIPS.keys())
     current_clip_id = clip_ids[st.session_state.current_clip]
     
-    st.subheader(f"🎯 Feature Ranking - {AUDIO_CLIPS[current_clip_id]['title']}")
+    st.subheader(f"Feature Ranking - {AUDIO_CLIPS[current_clip_id]['title']}")
     
     # Create the drag-drop interface
     ranking_dict, top_2_features = create_drag_drop_ranking(current_clip_id)
     
-    st.info("📋 You will be asked follow-up questions about your **top 2** most influential features.")
+    st.info("You will be asked follow-up questions about your **top 2** most influential features.")
     
     st.markdown("---")
     
@@ -561,7 +561,7 @@ def show_follow_up_questions():
     
     if top_features and len(top_features) >= 2:
         st.markdown(f'<div class="follow-up-section">', unsafe_allow_html=True)
-        st.subheader(f"📋 Follow-up Questions")
+        st.subheader(f"Follow-up Questions")
         st.markdown(f"You ranked **{top_features[0]}** and **{top_features[1]}** as your most influential features. Please answer these specific questions:")
         st.markdown('</div>', unsafe_allow_html=True)
         
@@ -639,7 +639,7 @@ def show_follow_up_questions():
 
 def show_final_questions():
     """Show final survey questions"""
-    st.subheader("📝 Final Questions")
+    st.subheader("Final Questions")
     
     with st.form("final_questions_form"):
         comments = st.text_area(
@@ -667,7 +667,7 @@ def show_final_questions():
 
 def show_completion_page():
     """Show survey completion page"""
-    st.success("🎉 Survey Completed Successfully!")
+    st.success("Survey Completed Successfully!")
     st.markdown("Thank you for participating in our research on news audio trustworthiness!")
     st.balloons()
     
