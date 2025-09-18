@@ -15,7 +15,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better dark theme styling
+# Custom CSS for drag-and-drop interface
 st.markdown("""
 <style>
     .main-header {
@@ -33,41 +33,117 @@ st.markdown("""
         margin: 1rem 0;
     }
     
-    .ranking-container {
+    .drag-drop-container {
+        display: flex;
+        gap: 2rem;
+        margin: 2rem 0;
+    }
+    
+    .features-pool {
+        flex: 1;
         background-color: #2D2D2D;
         padding: 1rem;
         border-radius: 8px;
-        border: 1px solid #444;
-        margin: 1rem 0;
+        border: 2px dashed #64B5F6;
+        min-height: 300px;
     }
     
-    .feature-item {
-        background-color: #4A90E2;
+    .ranking-area {
+        flex: 1;
+        background-color: #1E3A8A;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 2px solid #64B5F6;
+        min-height: 300px;
+    }
+    
+    .feature-block {
+        background: linear-gradient(135deg, #4A90E2 0%, #357ABD 100%);
         color: white;
-        padding: 0.8rem;
-        margin: 0.3rem 0;
-        border-radius: 6px;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        border-radius: 8px;
         text-align: center;
-        font-weight: 500;
-        border: 1px solid #357ABD;
+        font-weight: 600;
+        cursor: move;
+        border: 2px solid #357ABD;
+        transition: all 0.3s ease;
+        user-select: none;
     }
     
-    .feature-item:hover {
-        background-color: #357ABD;
-        cursor: pointer;
+    .feature-block:hover {
+        background: linear-gradient(135deg, #357ABD 0%, #1976D2 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
+    }
+    
+    .ranking-slot {
+        background-color: #334155;
+        border: 2px dashed #64B5F6;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        border-radius: 8px;
+        min-height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #94A3B8;
+        font-style: italic;
+    }
+    
+    .ranking-slot.filled {
+        border: 2px solid #4A90E2;
+        background-color: #1E3A8A;
+        color: white;
+    }
+    
+    .section-header {
+        color: #64B5F6;
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        text-align: center;
     }
     
     .instructions {
         color: #B3B3B3;
         font-style: italic;
         margin-bottom: 1rem;
+        text-align: center;
     }
     
-    .section-divider {
-        border-top: 2px solid #444;
-        margin: 2rem 0;
+    .follow-up-section {
+        background-color: #0F172A;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border-left: 4px solid #F59E0B;
+        margin: 1rem 0;
     }
 </style>
+
+<script>
+function allowDrop(ev) {
+    ev.preventDefault();
+}
+
+function drag(ev) {
+    ev.dataTransfer.setData("text", ev.target.id);
+}
+
+function drop(ev) {
+    ev.preventDefault();
+    var data = ev.dataTransfer.getData("text");
+    var draggedElement = document.getElementById(data);
+    
+    // If dropping in ranking area, create a copy
+    if (ev.target.classList.contains('ranking-slot') && !ev.target.hasChildNodes()) {
+        var clone = draggedElement.cloneNode(true);
+        clone.id = data + '_ranked';
+        ev.target.appendChild(clone);
+        ev.target.classList.add('filled');
+    }
+}
+</script>
 """, unsafe_allow_html=True)
 
 # Linguistic features for ranking
@@ -82,24 +158,71 @@ LINGUISTIC_FEATURES = [
 # Follow-up questions based on most influential feature
 FOLLOW_UP_QUESTIONS = {
     "Rate of speech": [
-        "Did you find the speaking pace too fast, too slow, or just right?",
-        "How did the speaking speed affect your perception of urgency?"
+        {
+            "id": "pace_assessment",
+            "text": "Did you find the speaking pace:",
+            "type": "radio",
+            "options": ["Too fast", "Too slow", "Just right"]
+        },
+        {
+            "id": "urgency_perception", 
+            "text": "How did the speaking speed affect your perception of urgency?",
+            "type": "text"
+        }
     ],
     "Tone": [
-        "Would you describe the tone as formal, casual, or somewhere in between?",
-        "Did the tone convey confidence or uncertainty to you?"
+        {
+            "id": "tone_formality",
+            "text": "Would you describe the tone as:",
+            "type": "radio", 
+            "options": ["Very formal", "Somewhat formal", "Neutral", "Somewhat casual", "Very casual"]
+        },
+        {
+            "id": "tone_confidence",
+            "text": "Did the tone convey confidence or uncertainty to you?",
+            "type": "radio",
+            "options": ["Very confident", "Confident", "Neutral", "Uncertain", "Very uncertain"]
+        }
     ],
     "Inflection": [
-        "Did the speaker's inflection sound natural or forced?",
-        "How did the inflection patterns affect your understanding?"
+        {
+            "id": "inflection_naturalness",
+            "text": "Did the speaker's inflection sound:",
+            "type": "radio",
+            "options": ["Very natural", "Somewhat natural", "Neutral", "Somewhat forced", "Very forced"]
+        },
+        {
+            "id": "inflection_understanding",
+            "text": "How did the inflection patterns affect your understanding?",
+            "type": "text"
+        }
     ],
     "Intonation": [
-        "Did the intonation sound monotonous or varied?",
-        "How did the intonation affect the emotional impact of the message?"
+        {
+            "id": "intonation_variety",
+            "text": "Did the intonation sound:",
+            "type": "radio",
+            "options": ["Very monotonous", "Somewhat monotonous", "Neutral", "Somewhat varied", "Very varied"]
+        },
+        {
+            "id": "emotional_impact",
+            "text": "How did the intonation affect the emotional impact of the message?",
+            "type": "text"
+        }
     ],
     "Stress": [
-        "Were the emphasized words appropriate for the content?",
-        "Did the stress patterns help or hinder comprehension?"
+        {
+            "id": "stress_appropriateness",
+            "text": "Were the emphasized words appropriate for the content?",
+            "type": "radio",
+            "options": ["Very appropriate", "Appropriate", "Neutral", "Inappropriate", "Very inappropriate"]
+        },
+        {
+            "id": "stress_comprehension",
+            "text": "Did the stress patterns help or hinder comprehension?",
+            "type": "radio", 
+            "options": ["Helped a lot", "Helped somewhat", "No effect", "Hindered somewhat", "Hindered a lot"]
+        }
     ]
 }
 
@@ -159,10 +282,72 @@ AUDIO_CLIPS = get_audio_files()
 if 'responses' not in st.session_state:
     st.session_state.responses = []
 
+if 'survey_step' not in st.session_state:
+    st.session_state.survey_step = 'participant_info'
+
+if 'current_clip' not in st.session_state:
+    st.session_state.current_clip = 0
+
+if 'current_responses' not in st.session_state:
+    st.session_state.current_responses = {}
+
+if 'ranking_complete' not in st.session_state:
+    st.session_state.ranking_complete = {}
+
 def save_response(response_data):
     """Save response to session state"""
     response_data['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     st.session_state.responses.append(response_data)
+
+def create_drag_drop_ranking(clip_id):
+    """Create drag and drop ranking interface"""
+    st.markdown("**Which of the following features do you think influenced your opinion the most?**")
+    st.markdown('<p class="instructions">Drag the features from the left pool to the ranking area on the right. Place the most influential feature at the top.</p>', unsafe_allow_html=True)
+    
+    # Create two columns for drag-drop interface
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        st.markdown('<div class="section-header">Available Features</div>', unsafe_allow_html=True)
+        st.markdown('<div class="features-pool" id="features-pool">', unsafe_allow_html=True)
+        
+        for i, feature in enumerate(LINGUISTIC_FEATURES):
+            feature_id = f"feature_{clip_id}_{i}"
+            st.markdown(f'''
+                <div class="feature-block" draggable="true" ondragstart="drag(event)" id="{feature_id}">
+                    {feature}
+                </div>
+            ''', unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown('<div class="section-header">Ranking (Most → Least Influential)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="ranking-area" ondrop="drop(event)" ondragover="allowDrop(event)">', unsafe_allow_html=True)
+        
+        for i in range(5):
+            rank_position = i + 1
+            st.markdown(f'''
+                <div class="ranking-slot" ondrop="drop(event)" ondragover="allowDrop(event)" id="rank_{clip_id}_{rank_position}">
+                    Position {rank_position} (Drag feature here)
+                </div>
+            ''', unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Fallback manual ranking system
+    st.markdown("---")
+    st.markdown("**Alternative: Manual Ranking** (if drag-and-drop doesn't work)")
+    
+    ranking_options = {}
+    for feature in LINGUISTIC_FEATURES:
+        ranking_options[feature] = st.selectbox(
+            f"Rank for {feature} (1=Most influential, 5=Least influential)",
+            options=[1, 2, 3, 4, 5],
+            key=f"manual_rank_{clip_id}_{feature.replace(' ', '_').lower()}"
+        )
+    
+    return ranking_options
 
 def display_results():
     """Display survey results with charts"""
@@ -320,12 +505,11 @@ def display_results():
 def main():
     st.markdown('<h1 class="main-header">🎙️ News Audio Trustworthiness Survey</h1>', unsafe_allow_html=True)
     st.markdown("**Research Study: How Linguistic Features Affect News Audio Trustworthiness**")
-    st.markdown("Please listen to each audio clip carefully and answer the questions about your perception of trustworthiness.")
     
     # Owner authentication for results
     st.sidebar.header("🔒 Owner Access")
     owner_password = st.sidebar.text_input("Enter owner password to view results", type="password")
-    is_owner = owner_password == "letmein"  # Change this password as needed
+    is_owner = owner_password == "letmein"
 
     # Create tabs for survey and results
     if is_owner:
@@ -334,137 +518,233 @@ def main():
         tab1, = st.tabs(["📝 Take Survey"])
 
     with tab1:
-        st.header("Survey Form")
-        
         if not AUDIO_CLIPS:
             st.error("No audio files found in the 'audio' folder. Please add audio files (.mp3, .wav, .m4a, .ogg) to continue.")
             st.info("Expected audio folder location: `audio/`")
             return
         
-        with st.form("trustworthiness_survey"):
-            # Participant information
-            st.subheader("👤 Participant Information")
-            participant_id = st.text_input("Participant ID (optional)", placeholder="Enter a unique identifier")
-            age = st.number_input("Age", min_value=18, max_value=100, value=25)
-            native_language = st.selectbox("Native Language", 
-                                         ["English", "Spanish", "French", "German", "Chinese", "Other"])
-            
-            st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-            
-            # Collect responses for all audio clips
-            responses = {}
-            
-            for clip_id, clip_data in AUDIO_CLIPS.items():
-                st.markdown(f'<div class="audio-section">', unsafe_allow_html=True)
-                st.subheader(f"🎵 {clip_data['title']}")
-                
-                # Display audio file
-                if os.path.exists(clip_data['file']):
-                    st.audio(clip_data['file'])
-                else:
-                    st.warning(f"Audio file not found: {clip_data['file']}")
-                
-                st.markdown("**Please listen to the audio clip above and answer the following questions:**")
-                
-                # Standard questions for this clip
-                for question in clip_data['questions']:
-                    if question['type'] == 'scale':
-                        response = st.select_slider(
-                            question['text'],
-                            options=question['scale'],
-                            format_func=lambda x, labels=question['labels']: f"{x} - {labels[0] if x == 1 else labels[1] if x == 7 else ''}",
-                            key=f"{clip_id}_{question['id']}"
-                        )
-                        responses[question['id']] = response
-                
-                # Improved ranking question using select boxes
-                st.markdown("**Which of the following features do you think influenced your opinion the most?**")
-                st.markdown('<p class="instructions">Rank each feature from 1 (most influential) to 5 (least influential):</p>', unsafe_allow_html=True)
-                
-                st.markdown('<div class="ranking-container">', unsafe_allow_html=True)
-                
-                # Create ranking for each feature
-                feature_rankings = {}
-                cols = st.columns(len(LINGUISTIC_FEATURES))
-                
-                for idx, feature in enumerate(LINGUISTIC_FEATURES):
-                    with cols[idx]:
-                        st.markdown(f'<div class="feature-item">{feature}</div>', unsafe_allow_html=True)
-                        ranking = st.selectbox(
-                            f"Rank for {feature}",
-                            options=[1, 2, 3, 4, 5],
-                            key=f"{clip_id}_rank_{feature.replace(' ', '_').lower()}",
-                            label_visibility="collapsed"
-                        )
-                        feature_rankings[feature] = ranking
-                        responses[f"{clip_id}_ranking_{feature.replace(' ', '_').lower()}"] = ranking
-                
-                st.markdown('</div>', unsafe_allow_html=True)
-                
-                # Find most influential feature (lowest ranking number)
-                most_influential = min(feature_rankings, key=feature_rankings.get)
-                responses[f"{clip_id}_most_influential"] = most_influential
-                
-                # Follow-up questions based on most influential feature
-                if most_influential in FOLLOW_UP_QUESTIONS:
-                    st.markdown(f"**Follow-up questions about {most_influential.lower()}:**")
-                    
-                    for idx, follow_up_q in enumerate(FOLLOW_UP_QUESTIONS[most_influential]):
-                        follow_up_response = st.text_input(
-                            follow_up_q,
-                            key=f"{clip_id}_followup_{idx}",
-                            placeholder="Please share your thoughts..."
-                        )
-                        responses[f"{clip_id}_followup_{most_influential.replace(' ', '_').lower()}_{idx}"] = follow_up_response
-                
-                st.markdown('</div>', unsafe_allow_html=True)
-                st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-            
-            # Additional questions
-            st.subheader("📝 Additional Information")
-            overall_familiarity = st.slider(
-                "How familiar are you with news media analysis?",
-                min_value=1, max_value=7, value=4,
-                help="1 = Not familiar at all, 7 = Very familiar"
-            )
-            
-            comments = st.text_area(
-                "Additional comments about the survey or audio clips (optional)",
-                placeholder="Any observations about linguistic features, audio quality, etc."
-            )
-            
-            # Submit button
-            submitted = st.form_submit_button("Submit Survey", type="primary")
-            
-            if submitted:
-                # Validate that rankings are unique for each clip
-                valid_submission = True
-                for clip_id in AUDIO_CLIPS.keys():
-                    clip_rankings = [responses[f"{clip_id}_ranking_{feature.replace(' ', '_').lower()}"] for feature in LINGUISTIC_FEATURES]
-                    if len(set(clip_rankings)) != len(clip_rankings):
-                        st.error(f"Please ensure each feature has a unique ranking for {AUDIO_CLIPS[clip_id]['title']}")
-                        valid_submission = False
-                        break
-                
-                if valid_submission:
-                    # Collect all form data
-                    response_data = {
-                        'participant_id': participant_id if participant_id else f"anon_{len(st.session_state.responses)+1}",
-                        'age': age,
-                        'native_language': native_language,
-                        'overall_familiarity': overall_familiarity,
-                        'comments': comments,
-                        **responses  # Add all the audio clip responses
-                    }
-                    
-                    # Save response
-                    save_response(response_data)
-                    st.success("Thank you for participating in our research! 🎉")
-                    st.balloons()
+        # Progress indicator
+        total_clips = len(AUDIO_CLIPS)
+        if st.session_state.survey_step != 'participant_info' and st.session_state.survey_step != 'completed':
+            progress = (st.session_state.current_clip) / total_clips
+            st.progress(progress, text=f"Audio Clip {st.session_state.current_clip + 1} of {total_clips}")
+        
+        # Survey steps
+        if st.session_state.survey_step == 'participant_info':
+            show_participant_info()
+        elif st.session_state.survey_step == 'audio_questions':
+            show_audio_questions()
+        elif st.session_state.survey_step == 'ranking':
+            show_ranking_interface()
+        elif st.session_state.survey_step == 'follow_up':
+            show_follow_up_questions()
+        elif st.session_state.survey_step == 'final_questions':
+            show_final_questions()
+        elif st.session_state.survey_step == 'completed':
+            show_completion_page()
 
     if is_owner:
         with tab2:
             display_results()
+
+def show_participant_info():
+    """Show participant information form"""
+    st.header("👤 Participant Information")
+    
+    with st.form("participant_form"):
+        participant_id = st.text_input("Participant ID (optional)", placeholder="Enter a unique identifier")
+        age = st.number_input("Age", min_value=18, max_value=100, value=25)
+        native_language = st.selectbox("Native Language", 
+                                     ["English", "Spanish", "French", "German", "Chinese", "Other"])
+        overall_familiarity = st.slider(
+            "How familiar are you with news media analysis?",
+            min_value=1, max_value=7, value=4,
+            help="1 = Not familiar at all, 7 = Very familiar"
+        )
+        
+        if st.form_submit_button("Start Survey", type="primary"):
+            st.session_state.current_responses = {
+                'participant_id': participant_id if participant_id else f"anon_{len(st.session_state.responses)+1}",
+                'age': age,
+                'native_language': native_language,
+                'overall_familiarity': overall_familiarity
+            }
+            st.session_state.survey_step = 'audio_questions'
+            st.session_state.current_clip = 0
+            st.rerun()
+
+def show_audio_questions():
+    """Show audio questions for current clip"""
+    clip_ids = list(AUDIO_CLIPS.keys())
+    current_clip_id = clip_ids[st.session_state.current_clip]
+    clip_data = AUDIO_CLIPS[current_clip_id]
+    
+    st.markdown(f'<div class="audio-section">', unsafe_allow_html=True)
+    st.subheader(f"🎵 {clip_data['title']}")
+    
+    # Display audio file
+    if os.path.exists(clip_data['file']):
+        st.audio(clip_data['file'])
+    else:
+        st.warning(f"Audio file not found: {clip_data['file']}")
+    
+    st.markdown("**Please listen to the audio clip above and answer the following questions:**")
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    with st.form(f"audio_form_{current_clip_id}"):
+        responses = {}
+        
+        # Standard questions for this clip
+        for question in clip_data['questions']:
+            if question['type'] == 'scale':
+                response = st.select_slider(
+                    question['text'],
+                    options=question['scale'],
+                    format_func=lambda x, labels=question['labels']: f"{x} - {labels[0] if x == 1 else labels[1] if x == 7 else ''}",
+                    key=f"{current_clip_id}_{question['id']}"
+                )
+                responses[question['id']] = response
+        
+        if st.form_submit_button("Continue to Ranking", type="primary"):
+            # Save current responses
+            st.session_state.current_responses.update(responses)
+            st.session_state.survey_step = 'ranking'
+            st.rerun()
+
+def show_ranking_interface():
+    """Show drag-and-drop ranking interface"""
+    clip_ids = list(AUDIO_CLIPS.keys())
+    current_clip_id = clip_ids[st.session_state.current_clip]
+    
+    st.subheader(f"🎯 Feature Ranking - {AUDIO_CLIPS[current_clip_id]['title']}")
+    
+    # Create the drag-drop interface
+    ranking_options = create_drag_drop_ranking(current_clip_id)
+    
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        if st.button("← Back to Questions", key="back_to_questions"):
+            st.session_state.survey_step = 'audio_questions'
+            st.rerun()
+    
+    with col2:
+        if st.button("Continue to Follow-up →", type="primary", key="continue_to_followup"):
+            # Validate rankings are unique
+            ranking_values = list(ranking_options.values())
+            if len(set(ranking_values)) != len(ranking_values):
+                st.error("Please ensure each feature has a unique ranking (1-5).")
+            else:
+                # Save rankings
+                for feature, rank in ranking_options.items():
+                    st.session_state.current_responses[f"{current_clip_id}_ranking_{feature.replace(' ', '_').lower()}"] = rank
+                
+                # Find most influential feature (lowest rank number)
+                most_influential = min(ranking_options, key=ranking_options.get)
+                st.session_state.current_responses[f"{current_clip_id}_most_influential"] = most_influential
+                st.session_state.survey_step = 'follow_up'
+                st.rerun()
+
+def show_follow_up_questions():
+    """Show follow-up questions based on most influential feature"""
+    clip_ids = list(AUDIO_CLIPS.keys())
+    current_clip_id = clip_ids[st.session_state.current_clip]
+    most_influential = st.session_state.current_responses.get(f"{current_clip_id}_most_influential")
+    
+    if most_influential and most_influential in FOLLOW_UP_QUESTIONS:
+        st.markdown(f'<div class="follow-up-section">', unsafe_allow_html=True)
+        st.subheader(f"📋 Follow-up Questions about {most_influential}")
+        st.markdown(f"Since you ranked **{most_influential}** as the most influential feature, please answer these specific questions:")
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        with st.form(f"followup_form_{current_clip_id}"):
+            follow_up_responses = {}
+            
+            for question in FOLLOW_UP_QUESTIONS[most_influential]:
+                if question['type'] == 'radio':
+                    response = st.radio(
+                        question['text'],
+                        options=question['options'],
+                        key=f"{current_clip_id}_followup_{question['id']}"
+                    )
+                elif question['type'] == 'text':
+                    response = st.text_area(
+                        question['text'],
+                        key=f"{current_clip_id}_followup_{question['id']}",
+                        placeholder="Please share your thoughts..."
+                    )
+                
+                follow_up_responses[f"{current_clip_id}_followup_{question['id']}"] = response
+            
+            col1, col2 = st.columns([1, 1])
+            
+            with col1:
+                if st.form_submit_button("← Back to Ranking", key="back_to_ranking"):
+                    st.session_state.survey_step = 'ranking'
+                    st.rerun()
+            
+            with col2:
+                if st.form_submit_button("Next →", type="primary", key="next_clip"):
+                    # Save follow-up responses
+                    st.session_state.current_responses.update(follow_up_responses)
+                    
+                    # Move to next clip or finish
+                    if st.session_state.current_clip < len(AUDIO_CLIPS) - 1:
+                        st.session_state.current_clip += 1
+                        st.session_state.survey_step = 'audio_questions'
+                    else:
+                        # Add final questions
+                        st.session_state.survey_step = 'final_questions'
+                    st.rerun()
+    else:
+        # Skip to next clip if no follow-up questions
+        if st.session_state.current_clip < len(AUDIO_CLIPS) - 1:
+            st.session_state.current_clip += 1
+            st.session_state.survey_step = 'audio_questions'
+        else:
+            st.session_state.survey_step = 'final_questions'
+        st.rerun()
+
+def show_final_questions():
+    """Show final survey questions"""
+    st.subheader("📝 Final Questions")
+    
+    with st.form("final_questions_form"):
+        comments = st.text_area(
+            "Additional comments about the survey or audio clips (optional)",
+            placeholder="Any observations about linguistic features, audio quality, etc."
+        )
+        
+        overall_experience = st.slider(
+            "How would you rate your overall experience with this survey?",
+            min_value=1, max_value=7, value=4,
+            help="1 = Very poor, 7 = Excellent"
+        )
+        
+        if st.form_submit_button("Complete Survey", type="primary"):
+            # Add final responses
+            st.session_state.current_responses['comments'] = comments
+            st.session_state.current_responses['overall_experience'] = overall_experience
+            
+            # Save the complete response
+            save_response(st.session_state.current_responses)
+            
+            # Move to completion
+            st.session_state.survey_step = 'completed'
+            st.rerun()
+
+def show_completion_page():
+    """Show survey completion page"""
+    st.success("🎉 Survey Completed Successfully!")
+    st.markdown("Thank you for participating in our research on news audio trustworthiness!")
+    st.balloons()
+    
+    if st.button("Take Another Survey"):
+        # Reset session state
+        st.session_state.survey_step = 'participant_info'
+        st.session_state.current_clip = 0
+        st.session_state.current_responses = {}
+        st.rerun()
     
     # Sidebar with additional features
     st.sidebar.header("📋 Survey Controls")
