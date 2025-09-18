@@ -71,22 +71,44 @@ def main():
     st.title("📊 Survey & Poll Application")
     st.markdown("Welcome to our interactive survey! Please fill out the form below.")
     
+    # Owner authentication for results
+    st.sidebar.header("🔒 Owner Access")
+    owner_password = st.sidebar.text_input("Enter owner password to view results", type="password")
+    is_owner = owner_password == "letmein"  # Change this password as needed
+
+    # Audio file upload (owner only)
+    st.sidebar.header("🎵 Audio for Poll Question")
+    if is_owner:
+        audio_file = st.sidebar.file_uploader("Upload an audio file (mp3, wav)", type=["mp3", "wav"])
+        if audio_file:
+            st.session_state.poll_audio = audio_file.read()
+            st.session_state.poll_audio_type = audio_file.type
+    # If not owner, use previous audio if available
+    poll_audio = st.session_state.get("poll_audio", None)
+    poll_audio_type = st.session_state.get("poll_audio_type", None)
+
     # Create tabs for survey and results
     tab1, tab2 = st.tabs(["📝 Take Survey", "📊 View Results"])
-    
+
     with tab1:
         st.header("Survey Form")
-        
+
+        # Embed audio in the question if available
+        if poll_audio and poll_audio_type:
+            st.audio(poll_audio, format=poll_audio_type)
+            st.markdown("**Listen to the audio and answer the question below:**")
+
         with st.form("survey_form"):
             # Personal Information
             st.subheader("👤 Personal Information")
             name = st.text_input("Name (optional)")
             age = st.number_input("Age", min_value=13, max_value=100, value=25)
             
-            # Multiple choice question
-            st.subheader("💻 Technical Preferences")
+
+            # Multiple choice question (now with audio context)
+            st.subheader("💻 Poll Question")
             favorite_language = st.selectbox(
-                "What's your favorite programming language?",
+                "What's your answer to the audio question? (Choose one)",
                 ["Python", "JavaScript", "Java", "C++", "Go", "Rust", "Other"]
             )
             
@@ -143,7 +165,10 @@ def main():
                 st.balloons()
     
     with tab2:
-        display_results()
+        if is_owner:
+            display_results()
+        else:
+            st.warning("Results are restricted to the survey owner.")
     
     # Sidebar with additional features
     st.sidebar.header("📋 Survey Controls")
