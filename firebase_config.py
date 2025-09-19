@@ -18,14 +18,12 @@ class FirebaseService:
         try:
             # Check if Firebase is already initialized
             if firebase_admin._apps:
-                #st.info("🔥 Firebase already initialized")
                 self.db = firestore.client()
                 self.available = True
                 return
             
             # Check if secrets are available
             if "firebase" not in st.secrets:
-                #st.error("❌ Firebase secrets not found in st.secrets")
                 self.available = False
                 return
             
@@ -35,15 +33,11 @@ class FirebaseService:
             
             for field in required_fields:
                 if field not in firebase_config:
-                    #st.error(f"❌ Missing Firebase config field: {field}")
                     self.available = False
                     return
                 if not firebase_config[field]:
-                    #st.error(f"❌ Empty Firebase config field: {field}")
                     self.available = False
                     return
-
-            #st.info(f"🔥 Initializing Firebase for project: {firebase_config['project_id']}")
 
             # Create credentials object from secrets
             cred = credentials.Certificate({
@@ -63,11 +57,8 @@ class FirebaseService:
             firebase_admin.initialize_app(cred)
             self.db = firestore.client()
             self.available = True
-            #st.success("✅ Firebase initialized successfully!")
             
         except Exception as e:
-            #st.error(f"❌ Firebase initialization failed: {str(e)}")
-            #st.error(f"Error type: {type(e).__name__}")
             self.available = False
     
     def is_available(self) -> bool:
@@ -77,7 +68,6 @@ class FirebaseService:
     def save_response(self, response_data: Dict) -> bool:
         """Save a survey response to Firebase"""
         if not self.is_available():
-            #st.error("❌ Firebase not available for saving")
             return False
         
         try:
@@ -88,28 +78,21 @@ class FirebaseService:
             # Generate document ID
             doc_id = f"{response_data.get('participant_id', 'unknown')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
             
-            #st.info(f"📝 Saving to Firebase document: {doc_id}")
-            
             # Save to 'survey_responses' collection
             doc_ref = self.db.collection('survey_responses').document(doc_id)
             doc_ref.set(response_data)
             
-            #st.success(f"✅ Successfully saved document: {doc_id}")
             return True
             
         except Exception as e:
-            #st.error(f"❌ Error saving to Firebase: {str(e)}")
-            #st.error(f"Error type: {type(e).__name__}")
             return False
     
     def load_all_responses(self) -> List[Dict]:
         """Load all survey responses from Firebase"""
         if not self.is_available():
-            #st.warning("🔥 Firebase not available for loading")
             return []
         
         try:
-            #st.info("📖 Loading data from Firebase...")
             docs = self.db.collection('survey_responses').stream()
             responses = []
             
@@ -120,11 +103,9 @@ class FirebaseService:
             # Sort by timestamp
             responses.sort(key=lambda x: x.get('timestamp', ''))
             
-            #st.success(f"✅ Loaded {len(responses)} responses from Firebase")
             return responses
             
         except Exception as e:
-            #st.error(f"❌ Error loading from Firebase: {str(e)}")
             return []
     
     def get_response_count(self) -> int:
@@ -137,7 +118,6 @@ class FirebaseService:
             return len(list(docs))
             
         except Exception as e:
-            #st.error(f"Error getting response count: {str(e)}")
             return 0
     
     def delete_all_responses(self) -> bool:
@@ -153,7 +133,6 @@ class FirebaseService:
             return True
             
         except Exception as e:
-            #st.error(f"Error deleting responses: {str(e)}")
             return False
 
 # Global instance

@@ -404,10 +404,9 @@ def save_response(response_data):
     """Save response with Firebase priority and proper error handling"""
     response_data['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    # Try Firebase first with better error handling
+    # Try Firebase first
     if firebase_service and firebase_service.is_available():
         try:
-            st.info("Attempting to save to Firebase...")  # Debug message
             success = firebase_service.save_response(response_data)
             if success:
                 # Update session state
@@ -415,13 +414,8 @@ def save_response(response_data):
                     st.session_state.responses = []
                 st.session_state.responses.append(response_data)
                 return True
-            else:
-                st.error("❌ Firebase save returned False")
         except Exception as e:
-            st.error(f"❌ Firebase save failed: {str(e)}")
-            st.error(f"Error type: {type(e).__name__}")
-    else:
-        st.warning("🔥 Firebase service not available")
+            pass  # Silently fail and try fallbacks
     
     # Fallback to Google Sheets
     if CLOUD_STORAGE_AVAILABLE and "gcp_service_account" in st.secrets:
@@ -431,21 +425,17 @@ def save_response(response_data):
         # Check if we have real credentials (not placeholders)
         if project_id and project_id != "your-project-id" and "BEGIN PRIVATE KEY" in private_key and "..." not in private_key:
             try:
-                st.info("Attempting to save to Google Sheets...")
                 save_to_google_sheets(response_data)
-                st.success("✅ Data saved to Google Sheets!")
                 st.session_state.responses.append(response_data)
                 return True
             except Exception as e:
-                st.error(f"❌ Google Sheets save failed: {str(e)}")
+                pass  # Silently fail and try local storage
     
     # Final fallback to local storage
-    st.warning("📁 Falling back to local storage")
     if 'responses' not in st.session_state:
         st.session_state.responses = []
     st.session_state.responses.append(response_data)
     save_responses(st.session_state.responses)
-    st.info("💾 Data saved locally")
     return True
 
 def save_to_google_sheets(response_data):
@@ -666,45 +656,9 @@ def display_results():
     with st.expander("View Raw Data"):
         st.dataframe(df, use_container_width=True)
 
-def show_debug_panel():
-    """Debug panel to test Firebase connection"""
-    #st.sidebar.header("🔧 Debug Panel")
-    
-    if st.sidebar.button("Test Firebase Connection"):
-        if firebase_service:
-            st.sidebar.info(f"Firebase Available: {firebase_service.is_available()}")
-            
-            if firebase_service.is_available():
-                # Test save
-                test_data = {
-                    "test": True,
-                    "timestamp": datetime.now().isoformat(),
-                    "participant_id": "debug_test"
-                }
-                
-                try:
-                    success = firebase_service.save_response(test_data)
-                    st.sidebar.success(f"Test save: {'✅' if success else '❌'}")
-                except Exception as e:
-                    st.sidebar.error(f"Test save failed: {e}")
-        else:
-            st.sidebar.error("Firebase service not initialized")
-    
-    if st.sidebar.button("Load Firebase Data"):
-        if firebase_service and firebase_service.is_available():
-            try:
-                responses = firebase_service.load_all_responses()
-                st.sidebar.info(f"Found {len(responses)} responses")
-            except Exception as e:
-                st.sidebar.error(f"Load failed: {e}")
-
 def main():
     st.markdown('<h1 class="main-header">Distinguishing between AI and Human Newscasters</h1>', unsafe_allow_html=True)
     st.markdown("**Research Study: How Linguistic Features Affect Perception of AI vs Human Speech**")
-    
-    # Debug panel in sidebar
-    if st.sidebar.checkbox("Show Debug Panel"):
-        show_debug_panel()
     
     # Simple owner authentication
     owner_password = st.text_input("Owner password (optional - for viewing results)", type="password", key="owner_auth")
