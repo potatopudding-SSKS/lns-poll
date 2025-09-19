@@ -316,14 +316,14 @@ FOLLOW_UP_QUESTIONS = {
     "Intonation": [
         {
             "id": "intonation_variety",
-            "text": "How much did the voice melody change?",
+            "text": "How much did the melodic pattern of the voice change?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
             "labels": ["Very flat", "Normal", "Very varied"]
         },
         {
             "id": "emotional_impact",
-            "text": "How did the voice melody make you feel?",
+            "text": "How did the melodic pattern affect the way you felt?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
             "labels": ["Negative feeling", "No feeling", "Positive feeling"]
