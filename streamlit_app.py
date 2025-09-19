@@ -17,7 +17,6 @@ def get_firebase_service():
         from firebase_config import FirebaseService
         return FirebaseService()
     except Exception as e:
-        st.warning(f"Failed to initialize Firebase: {str(e)}")
         return None
 
 # Get Firebase service
@@ -51,7 +50,7 @@ def load_responses():
             if responses:
                 return responses
         except Exception as e:
-            st.warning(f"Firebase load failed: {str(e)}")
+            pass  # Silently fail and try fallbacks
     
     # Fallback to Google Sheets if configured
     if CLOUD_STORAGE_AVAILABLE and "gcp_service_account" in st.secrets:
