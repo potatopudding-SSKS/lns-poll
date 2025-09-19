@@ -8,6 +8,7 @@ import os
 import glob
 import pickle
 from streamlit_sortables import sort_items
+from firebase_config import firebase_service
 
 # Cloud storage imports (with fallback for local development)
 try:
@@ -29,8 +30,17 @@ st.set_page_config(
 DATA_FILE = "survey_responses.pkl"
 
 def load_responses():
-    """Load responses with cloud storage support"""
-    # Try cloud storage first - but check for real credentials
+    """Load responses with Firebase support and fallbacks"""
+    # Try Firebase first
+    if firebase_service.is_available():
+        try:
+            responses = firebase_service.load_all_responses()
+            if responses:
+                return responses
+        except Exception as e:
+            st.warning(f"Firebase unavailable, falling back to local storage: {str(e)}")
+    
+    # Fallback to Google Sheets if configured
     if CLOUD_STORAGE_AVAILABLE and "gcp_service_account" in st.secrets:
         project_id = st.secrets["gcp_service_account"].get("project_id", "")
         private_key = st.secrets["gcp_service_account"].get("private_key", "")
@@ -55,7 +65,7 @@ def load_responses():
             except Exception as e:
                 pass  # Silently fall back to local storage
     
-    # Fallback to local storage
+    # Final fallback to local storage
     try:
         if os.path.exists(DATA_FILE):
             with open(DATA_FILE, 'rb') as f:
@@ -97,12 +107,44 @@ def load_from_google_sheets():
     return responses
 
 def save_responses(responses):
-    """Save responses to persistent storage"""
+    """Save responses to persistent storage with Firebase support"""
+    # Try Firebase first
+    if firebase_service.is_available():
+        try:
+            # Save the latest response (assuming responses is a list and we want the last one)
+            if responses:
+                latest_response = responses[-1] if isinstance(responses, list) else responses
+                success = firebase_service.save_response(latest_response)
+                if success:
+                    return
+        except Exception as e:
+            st.warning(f"Firebase save failed, falling back to local storage: {str(e)}")
+    
+    # Fallback to local storage
     try:
         with open(DATA_FILE, 'wb') as f:
             pickle.dump(responses, f)
     except Exception as e:
         pass  # Silently ignore save errors
+
+def save_single_response(response_data):
+    """Save a single response to Firebase or fallback storage"""
+    # Try Firebase first
+    if firebase_service.is_available():
+        try:
+            success = firebase_service.save_response(response_data)
+            if success:
+                return True
+        except Exception as e:
+            st.warning(f"Firebase save failed: {str(e)}")
+    
+    # Fallback to adding to session state and local storage
+    if 'responses' not in st.session_state:
+        st.session_state.responses = []
+    
+    st.session_state.responses.append(response_data)
+    save_responses(st.session_state.responses)
+    return True
 
 # Initialize session state for storing responses
 if 'responses' not in st.session_state:
@@ -346,10 +388,20 @@ def get_audio_files():
 AUDIO_CLIPS = get_audio_files()
 
 def save_response(response_data):
-    """Save response with cloud storage support"""
+    """Save response with Firebase and cloud storage support"""
     response_data['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    # Try cloud storage first (Google Sheets) - but check for real credentials
+    # Try Firebase first
+    if firebase_service.is_available():
+        try:
+            success = firebase_service.save_response(response_data)
+            if success:
+                st.session_state.responses.append(response_data)
+                return
+        except Exception as e:
+            st.warning(f"Firebase save failed, trying Google Sheets: {str(e)}")
+    
+    # Try Google Sheets as fallback
     if CLOUD_STORAGE_AVAILABLE and "gcp_service_account" in st.secrets:
         project_id = st.secrets["gcp_service_account"].get("project_id", "")
         private_key = st.secrets["gcp_service_account"].get("private_key", "")
@@ -363,7 +415,7 @@ def save_response(response_data):
             except Exception as e:
                 pass  # Silently fall back to local storage
     
-    # Fallback to local storage
+    # Final fallback to local storage
     st.session_state.responses.append(response_data)
     save_responses(st.session_state.responses)
 

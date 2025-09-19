@@ -1,4 +1,7 @@
-#.streamlit/secrets.toml
+# Streamlit secrets and Firebase config
+.streamlit/secrets.toml
+firebase-key.json
+firebase_config.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
