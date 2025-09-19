@@ -34,7 +34,7 @@ except ImportError:
 # Set page configuration
 st.set_page_config(
     page_title="Distinguishing between AI and Human Newscasters",
-    page_icon="🎤",
+    page_icon="L",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -668,7 +668,7 @@ def display_results():
 
 def show_debug_panel():
     """Debug panel to test Firebase connection"""
-    st.sidebar.header("🔧 Debug Panel")
+    #st.sidebar.header("🔧 Debug Panel")
     
     if st.sidebar.button("Test Firebase Connection"):
         if firebase_service:
