@@ -7,7 +7,12 @@ import json
 import os
 import glob
 import pickle
+import random
 from streamlit_sortables import sort_items
+
+# Configuration variables
+N_RANDOM_CLIPS = 10  # Number of random clips to show all participants
+M_LANGUAGE_CLIPS = 5  # Number of language-specific clips to show
 
 # Initialize Firebase service with caching
 @st.cache_resource
@@ -173,6 +178,9 @@ if 'current_responses' not in st.session_state:
 
 if 'ranking_complete' not in st.session_state:
     st.session_state.ranking_complete = {}
+
+if 'participant_audio_clips' not in st.session_state:
+    st.session_state.participant_audio_clips = {}
 
 # Clean CSS for better styling
 st.markdown("""
@@ -347,57 +355,103 @@ FOLLOW_UP_QUESTIONS = {
     ]
 }
 
-def get_audio_files():
-    """Automatically detect audio files in the audio folder"""
+def get_all_audio_files():
+    """Get all audio files from audio folder and subfolders organized by location"""
     audio_folder = "audio"
     if not os.path.exists(audio_folder):
-        return {}
+        return {"general": [], "language_specific": {}}
     
-    audio_extensions = ["*.mp3", "*.wav", "*.m4a", "*.ogg"]
-    audio_files = {}
+    audio_extensions = [".mp3", ".wav", ".m4a", ".ogg"]
+    general_files = []
+    language_specific = {}
     
-    for ext in audio_extensions:
-        files = glob.glob(os.path.join(audio_folder, ext))
-        for file_path in files:
-            filename = os.path.basename(file_path)
-            name_without_ext = os.path.splitext(filename)[0]
-            
-            # Create a clean title from filename
-            title = name_without_ext.replace("_", " ").replace("-", " ").title()
-            
-            clip_id = f"clip_{len(audio_files) + 1}"
-            audio_files[clip_id] = {
-                "file": file_path,
-                "title": title,
-                "questions": [
-                    {
-                        "id": f"attitude_{len(audio_files) + 1}",
-                        "text": "Did the reporter have an appropriate attitude while reporting?",
-                        "type": "scale",
-                        "scale": [1, 2, 3, 4, 5],
-                        "labels": ["Not appropriate at all", "Very appropriate"]
-                    },
-                    {
-                        "id": f"naturalness_{len(audio_files) + 1}",
-                        "text": "How natural does the speech sound?",
-                        "type": "scale",
-                        "scale": [1, 2, 3, 4, 5],
-                        "labels": ["Very unnatural", "Very natural"]
-                    },
-                    {
-                        "id": f"trustworthiness_{len(audio_files) + 1}",
-                        "text": "How trustworthy/credible does it seem?",
-                        "type": "scale",
-                        "scale": [1, 2, 3, 4, 5],
-                        "labels": ["Not trustworthy/credible at all", "Very trustworthy/credible"]
-                    }
-                ]
-            }
+    # Get general audio files (root level)
+    for file in os.listdir(audio_folder):
+        file_path = os.path.join(audio_folder, file)
+        if os.path.isfile(file_path) and any(file.lower().endswith(ext) for ext in audio_extensions):
+            general_files.append(file_path)
     
-    return audio_files
+    # Get language-specific audio files (subfolders)
+    for item in os.listdir(audio_folder):
+        item_path = os.path.join(audio_folder, item)
+        if os.path.isdir(item_path):
+            language_files = []
+            for file in os.listdir(item_path):
+                file_path = os.path.join(item_path, file)
+                if os.path.isfile(file_path) and any(file.lower().endswith(ext) for ext in audio_extensions):
+                    language_files.append(file_path)
+            if language_files:
+                language_specific[item.lower()] = language_files
+    
+    return {"general": general_files, "language_specific": language_specific}
 
-# Get audio clips dynamically
-AUDIO_CLIPS = get_audio_files()
+def create_audio_clip_dict(file_path, clip_number):
+    """Create a standardized audio clip dictionary"""
+    filename = os.path.basename(file_path)
+    name_without_ext = os.path.splitext(filename)[0]
+    title = name_without_ext.replace("_", " ").replace("-", " ").title()
+    
+    return {
+        "file": file_path,
+        "title": title,
+        "questions": [
+            {
+                "id": f"attitude_{clip_number}",
+                "text": "Did the reporter have an appropriate attitude while reporting?",
+                "type": "scale",
+                "scale": [1, 2, 3, 4, 5],
+                "labels": ["Not appropriate at all", "Very appropriate"]
+            },
+            {
+                "id": f"naturalness_{clip_number}",
+                "text": "How natural does the speech sound?",
+                "type": "scale",
+                "scale": [1, 2, 3, 4, 5],
+                "labels": ["Very unnatural", "Very natural"]
+            },
+            {
+                "id": f"trustworthiness_{clip_number}",
+                "text": "How trustworthy/credible does it seem?",
+                "type": "scale",
+                "scale": [1, 2, 3, 4, 5],
+                "labels": ["Not trustworthy/credible at all", "Very trustworthy/credible"]
+            }
+        ]
+    }
+
+def get_participant_audio_clips(mother_tongue=None):
+    """Get randomized audio clips for a participant based on their mother tongue"""
+    all_files = get_all_audio_files()
+    selected_clips = {}
+    clip_counter = 1
+    
+    # Select N random general clips
+    general_files = all_files["general"]
+    if len(general_files) > 0:
+        n_clips = min(N_RANDOM_CLIPS, len(general_files))
+        selected_general = random.sample(general_files, n_clips)
+        
+        for file_path in selected_general:
+            clip_id = f"clip_{clip_counter}"
+            selected_clips[clip_id] = create_audio_clip_dict(file_path, clip_counter)
+            clip_counter += 1
+    
+    # If mother tongue matches a subfolder, add M random clips from that language
+    if mother_tongue and mother_tongue.lower() in all_files["language_specific"]:
+        language_files = all_files["language_specific"][mother_tongue.lower()]
+        if len(language_files) > 0:
+            m_clips = min(M_LANGUAGE_CLIPS, len(language_files))
+            selected_language = random.sample(language_files, m_clips)
+            
+            for file_path in selected_language:
+                clip_id = f"clip_{clip_counter}"
+                selected_clips[clip_id] = create_audio_clip_dict(file_path, clip_counter)
+                clip_counter += 1
+    
+    return selected_clips
+
+# Don't load audio clips at module level anymore - they'll be loaded per participant
+AUDIO_CLIPS = {}
 
 def save_response(response_data):
     """Save response with Firebase priority and proper error handling"""
@@ -520,182 +574,36 @@ def create_drag_drop_ranking(clip_id):
         
         return ranking_dict, [first_choice, second_choice]
 
-def display_results():
-    """Display survey results with charts"""
-    if not st.session_state.responses:
-        st.info("No responses yet!")
-        return
-    
-    df = pd.DataFrame(st.session_state.responses)
-    
-    st.subheader("AI vs Human Newscaster Study Results")
-    
-    # Display total responses
-    st.metric("Total Responses", len(df))
-    
-    # Color scheme for charts (blue theme)
-    color_palette = ['#4A90E2', '#64B5F6', '#1976D2', '#0D47A1', '#42A5F5']
-    
-    # Create charts for each audio clip
-    for clip_id, clip_data in AUDIO_CLIPS.items():
-        st.subheader(f"Results for {clip_data['title']}")
-        
-        col1, col2 = st.columns(2)
-        
-        # Get the clip number from clip_id
-        clip_num = clip_id.replace('clip_', '')
-        
-        # Naturalness results
-        naturalness_col = f"naturalness_{clip_num}"
-        if naturalness_col in df.columns:
-            with col1:
-                st.write("**Speech Naturalness Ratings**")
-                naturalness_counts = df[naturalness_col].value_counts().sort_index()
-                fig1 = px.bar(x=naturalness_counts.index, y=naturalness_counts.values,
-                             title="Speech Naturalness Distribution",
-                             labels={'x': 'Rating', 'y': 'Count'},
-                             color_discrete_sequence=[color_palette[0]])
-                fig1.update_layout(
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    font_color='white'
-                )
-                st.plotly_chart(fig1, use_container_width=True)
-        
-        # Trustworthiness results  
-        trust_col = f"trustworthiness_{clip_num}"
-        if trust_col in df.columns:
-            with col2:
-                st.write("**AI vs Human Perception Ratings**")
-                trust_counts = df[trust_col].value_counts().sort_index()
-                fig2 = px.bar(x=trust_counts.index, y=trust_counts.values,
-                             title="AI vs Human Perception Distribution", 
-                             labels={'x': 'Rating', 'y': 'Count'},
-                             color_discrete_sequence=[color_palette[1]])
-                fig2.update_layout(
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    font_color='white'
-                )
-                st.plotly_chart(fig2, use_container_width=True)
-        
-        # Linguistic features ranking analysis
-        st.write("**Linguistic Features Influence Ranking**")
-        ranking_data = []
-        
-        for feature in LINGUISTIC_FEATURES:
-            feature_key = f"{clip_id}_ranking_{feature.replace(' ', '_').lower()}"
-            if feature_key in df.columns:
-                avg_rank = df[feature_key].mean()
-                ranking_data.append({"Feature": feature, "Average Rank": avg_rank})
-        
-        if ranking_data:
-            rank_df = pd.DataFrame(ranking_data).sort_values("Average Rank")
-            fig4 = px.bar(rank_df, x="Feature", y="Average Rank", 
-                         title="Average Influence Ranking (Lower = More Influential)",
-                         labels={'Average Rank': 'Average Rank (1=Most Influential)'},
-                         color_discrete_sequence=[color_palette[3]])
-            fig4.update_layout(
-                xaxis_tickangle=-45,
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-                font_color='white'
-            )
-            st.plotly_chart(fig4, use_container_width=True)
-        
-        # Most influential feature summary
-        if f"{clip_id}_most_influential" in df.columns:
-            st.write("**Most Influential Feature Summary**")
-            most_influential_counts = df[f"{clip_id}_most_influential"].value_counts()
-            fig5 = px.pie(values=most_influential_counts.values, 
-                         names=most_influential_counts.index,
-                         title="Most Influential Linguistic Feature",
-                         color_discrete_sequence=color_palette)
-            fig5.update_layout(
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-                font_color='white'
-            )
-            st.plotly_chart(fig5, use_container_width=True)
-        
-        st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-    
-    # Overall analysis across all clips
-    st.subheader("Overall Analysis")
-    
-    # Native language distribution
-    if 'mother_tongue' in df.columns:
-        col1, col2 = st.columns(2)
-        with col1:
-            lang_counts = df['mother_tongue'].value_counts()
-            fig_lang = px.pie(values=lang_counts.values, names=lang_counts.index,
-                             title="Participant Mother Tongues",
-                             color_discrete_sequence=color_palette)
-            fig_lang.update_layout(
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-                font_color='white'
-            )
-            st.plotly_chart(fig_lang, use_container_width=True)
-        
-        with col2:
-            if 'age' in df.columns:
-                fig_age = px.histogram(df, x='age', nbins=10,
-                               title="Age Distribution",
-                               labels={'age': 'Age', 'count': 'Count'},
-                               color_discrete_sequence=[color_palette[4]])
-                fig_age.update_layout(
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    font_color='white'
-                )
-                st.plotly_chart(fig_age, use_container_width=True)
-    
-    # Raw data
-    with st.expander("View Raw Data"):
-        st.dataframe(df, use_container_width=True)
-
 def main():
     st.markdown('<h1 class="main-header">Distinguishing between AI and Human Newscasters</h1>', unsafe_allow_html=True)
     st.markdown("**Research Study: How Linguistic Features Affect Perception of AI vs Human Speech**")
     
-    # Simple owner authentication
-    owner_password = st.text_input("Owner password (optional - for viewing results)", type="password", key="owner_auth")
-    is_owner = owner_password == "letmein"
-
-    # Create tabs for survey and results
-    if is_owner:
-        tab1, tab2 = st.tabs(["Take Survey", "View Results"])
-    else:
-        tab1, = st.tabs(["Take Survey"])
-
-    with tab1:
-        if not AUDIO_CLIPS:
-            st.error("No audio files found in the 'audio' folder. Please add audio files (.mp3, .wav, .m4a, .ogg) to continue.")
-            st.info("Expected audio folder location: `audio/`")
-            return
-        
-        # Progress indicator
-        total_clips = len(AUDIO_CLIPS)
-        if st.session_state.survey_step != 'participant_info' and st.session_state.survey_step != 'completed':
+    # Check if audio files exist
+    all_files = get_all_audio_files()
+    if not all_files["general"] and not all_files["language_specific"]:
+        st.error("No audio files found in the 'audio' folder. Please add audio files (.mp3, .wav, .m4a, .ogg) to continue.")
+        st.info("Expected audio folder location: `audio/`")
+        return
+    
+    # Progress indicator
+    if st.session_state.survey_step != 'participant_info' and st.session_state.survey_step != 'completed':
+        participant_clips = st.session_state.participant_audio_clips
+        if participant_clips:
+            total_clips = len(participant_clips)
             progress = (st.session_state.current_clip) / total_clips
             st.progress(progress, text=f"Audio Clip {st.session_state.current_clip + 1} of {total_clips}")
-        
-        # Survey steps
-        if st.session_state.survey_step == 'participant_info':
-            show_participant_info()
-        elif st.session_state.survey_step == 'audio_questions':
-            show_audio_questions()
-        elif st.session_state.survey_step == 'ranking':
-            show_ranking_interface()
-        elif st.session_state.survey_step == 'follow_up':
-            show_follow_up_questions()
-        elif st.session_state.survey_step == 'completed':
-            show_completion_page()
-
-    if is_owner:
-        with tab2:
-            display_results()
+    
+    # Survey steps
+    if st.session_state.survey_step == 'participant_info':
+        show_participant_info()
+    elif st.session_state.survey_step == 'audio_questions':
+        show_audio_questions()
+    elif st.session_state.survey_step == 'ranking':
+        show_ranking_interface()
+    elif st.session_state.survey_step == 'follow_up':
+        show_follow_up_questions()
+    elif st.session_state.survey_step == 'completed':
+        show_completion_page()
 
 def show_participant_info():
     """Show participant information form"""
@@ -709,10 +617,20 @@ def show_participant_info():
             if not mother_tongue.strip():
                 st.error("Please enter your mother tongue.")
             else:
+                # Generate randomized audio clips for this participant
+                participant_clips = get_participant_audio_clips(mother_tongue.strip())
+                
+                if not participant_clips:
+                    st.error("No audio files found. Please contact the administrator.")
+                    return
+                
+                st.session_state.participant_audio_clips = participant_clips
                 st.session_state.current_responses = {
                     'participant_id': f"participant_{len(st.session_state.responses)+1}",
                     'age': age,
-                    'mother_tongue': mother_tongue.strip()
+                    'mother_tongue': mother_tongue.strip(),
+                    'n_general_clips': sum(1 for k, v in participant_clips.items() if not any(lang in v['file'].lower() for lang in get_all_audio_files()['language_specific'].keys())),
+                    'n_language_clips': sum(1 for k, v in participant_clips.items() if any(lang in v['file'].lower() for lang in get_all_audio_files()['language_specific'].keys()))
                 }
                 st.session_state.survey_step = 'audio_questions'
                 st.session_state.current_clip = 0
@@ -720,9 +638,15 @@ def show_participant_info():
 
 def show_audio_questions():
     """Show audio questions for current clip"""
-    clip_ids = list(AUDIO_CLIPS.keys())
+    participant_clips = st.session_state.participant_audio_clips
+    
+    if not participant_clips:
+        st.error("No audio clips assigned. Please restart the survey.")
+        return
+    
+    clip_ids = list(participant_clips.keys())
     current_clip_id = clip_ids[st.session_state.current_clip]
-    clip_data = AUDIO_CLIPS[current_clip_id]
+    clip_data = participant_clips[current_clip_id]
     
     st.markdown(f'<div class="audio-section">', unsafe_allow_html=True)
     st.subheader(f"{clip_data['title']}")
@@ -758,10 +682,11 @@ def show_audio_questions():
 
 def show_ranking_interface():
     """Show drag-and-drop ranking interface"""
-    clip_ids = list(AUDIO_CLIPS.keys())
+    participant_clips = st.session_state.participant_audio_clips
+    clip_ids = list(participant_clips.keys())
     current_clip_id = clip_ids[st.session_state.current_clip]
     
-    st.subheader(f"Feature Ranking - {AUDIO_CLIPS[current_clip_id]['title']}")
+    st.subheader(f"Feature Ranking - {participant_clips[current_clip_id]['title']}")
     
     # Create the drag-drop interface
     ranking_dict, top_2_features = create_drag_drop_ranking(current_clip_id)
@@ -790,7 +715,8 @@ def show_ranking_interface():
 
 def show_follow_up_questions():
     """Show follow-up questions for all linguistic features"""
-    clip_ids = list(AUDIO_CLIPS.keys())
+    participant_clips = st.session_state.participant_audio_clips
+    clip_ids = list(participant_clips.keys())
     current_clip_id = clip_ids[st.session_state.current_clip]
     
     st.markdown(f'<div class="follow-up-section">', unsafe_allow_html=True)
@@ -841,41 +767,15 @@ def show_follow_up_questions():
                 st.session_state.current_responses.update(follow_up_responses)
                 
                 # Move to next clip or finish
-                if st.session_state.current_clip < len(AUDIO_CLIPS) - 1:
+                participant_clips = st.session_state.participant_audio_clips
+                if st.session_state.current_clip < len(participant_clips) - 1:
                     st.session_state.current_clip += 1
                     st.session_state.survey_step = 'audio_questions'
                 else:
-                    # Complete survey without final questions
+                    # Complete survey
                     save_response(st.session_state.current_responses)
                     st.session_state.survey_step = 'completed'
                 st.rerun()
-
-def show_final_questions():
-    """Show final survey questions"""
-    st.subheader("Final Questions")
-    
-    with st.form("final_questions_form"):
-        comments = st.text_area(
-            "Additional comments about the survey or audio clips (optional)"
-        )
-        
-        overall_experience = st.slider(
-            "How would you rate your overall experience with this survey?",
-            min_value=1, max_value=7, value=None,
-            help="1 = Very poor, 7 = Excellent"
-        )
-        
-        if st.form_submit_button("Complete Survey", type="primary"):
-            # Add final responses
-            st.session_state.current_responses['comments'] = comments
-            st.session_state.current_responses['overall_experience'] = overall_experience
-            
-            # Save the complete response
-            save_response(st.session_state.current_responses)
-            
-            # Move to completion
-            st.session_state.survey_step = 'completed'
-            st.rerun()
 
 def show_completion_page():
     """Show survey completion page"""
@@ -888,6 +788,7 @@ def show_completion_page():
         st.session_state.survey_step = 'participant_info'
         st.session_state.current_clip = 0
         st.session_state.current_responses = {}
+        st.session_state.participant_audio_clips = {}
         st.rerun()
 
 if __name__ == "__main__":
