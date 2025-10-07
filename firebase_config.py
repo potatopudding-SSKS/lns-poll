@@ -68,6 +68,7 @@ class FirebaseService:
     def save_response(self, response_data: Dict) -> bool:
         """Save a survey response to Firebase"""
         if not self.is_available():
+            st.error("Firebase not available - DB is None or not initialized")
             return False
         
         try:
@@ -78,13 +79,21 @@ class FirebaseService:
             # Generate document ID
             doc_id = f"{response_data.get('participant_id', 'unknown')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
             
+            st.info(f"Saving to document: {doc_id}")
+            st.info(f"Collection: survey_responses")
+            
             # Save to 'survey_responses' collection
             doc_ref = self.db.collection('survey_responses').document(doc_id)
             doc_ref.set(response_data)
             
+            st.success(f"Document {doc_id} saved successfully!")
             return True
             
         except Exception as e:
+            st.error(f"Firebase save_response exception: {str(e)}")
+            st.error(f"Exception type: {type(e).__name__}")
+            import traceback
+            st.error(f"Traceback: {traceback.format_exc()}")
             return False
     
     def load_all_responses(self) -> List[Dict]:

@@ -11,8 +11,8 @@ import random
 from streamlit_sortables import sort_items
 
 # Configuration variables
-N_RANDOM_CLIPS = 10  # Number of random clips to show all participants
-M_LANGUAGE_CLIPS = 5  # Number of language-specific clips to show
+N_RANDOM_CLIPS = 1  # Number of random clips to show all participants
+M_LANGUAGE_CLIPS = 0  # Number of language-specific clips to show
 
 # Initialize Firebase service with caching
 @st.cache_resource
@@ -490,15 +490,22 @@ def save_response(response_data):
     # Try Firebase first
     if firebase_service and firebase_service.is_available():
         try:
+            st.info("🔥 Attempting to save to Firebase...")
             success = firebase_service.save_response(response_data)
             if success:
+                st.success("✅ Data saved to Firebase successfully!")
                 # Update session state
                 if 'responses' not in st.session_state:
                     st.session_state.responses = []
                 st.session_state.responses.append(response_data)
                 return True
+            else:
+                st.error("❌ Firebase save returned False - trying fallback...")
         except Exception as e:
-            pass  # Silently fail and try fallbacks
+            st.error(f"❌ Firebase error: {str(e)}")
+            st.error(f"Error type: {type(e).__name__}")
+    else:
+        st.warning("⚠️ Firebase service not available")
     
     # Fallback to Google Sheets
     if CLOUD_STORAGE_AVAILABLE and "gcp_service_account" in st.secrets:
@@ -508,17 +515,21 @@ def save_response(response_data):
         # Check if we have real credentials (not placeholders)
         if project_id and project_id != "your-project-id" and "BEGIN PRIVATE KEY" in private_key and "..." not in private_key:
             try:
+                st.info("📊 Attempting to save to Google Sheets...")
                 save_to_google_sheets(response_data)
+                st.success("✅ Data saved to Google Sheets!")
                 st.session_state.responses.append(response_data)
                 return True
             except Exception as e:
-                pass  # Silently fail and try local storage
+                st.error(f"❌ Google Sheets error: {str(e)}")
     
     # Final fallback to local storage
+    st.warning("💾 Saving to local storage...")
     if 'responses' not in st.session_state:
         st.session_state.responses = []
     st.session_state.responses.append(response_data)
     save_responses(st.session_state.responses)
+    st.info("✅ Data saved locally")
     return True
 
 def save_to_google_sheets(response_data):
