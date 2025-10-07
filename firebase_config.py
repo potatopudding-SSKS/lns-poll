@@ -18,12 +18,14 @@ class FirebaseService:
         try:
             # Check if Firebase is already initialized
             if firebase_admin._apps:
+                st.info("🔄 Firebase already initialized, reusing existing connection")
                 self.db = firestore.client()
                 self.available = True
                 return
             
             # Check if secrets are available
             if "firebase" not in st.secrets:
+                st.error("❌ Firebase secrets not found in Streamlit configuration")
                 self.available = False
                 return
             
@@ -57,8 +59,11 @@ class FirebaseService:
             firebase_admin.initialize_app(cred)
             self.db = firestore.client()
             self.available = True
+            st.success("✅ Firebase initialized successfully!")
             
         except Exception as e:
+            st.error(f"❌ Firebase initialization error: {str(e)}")
+            st.error(f"Exception type: {type(e).__name__}")
             self.available = False
     
     def is_available(self) -> bool:

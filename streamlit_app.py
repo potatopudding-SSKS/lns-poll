@@ -619,6 +619,24 @@ def main():
     st.markdown('<h1 class="main-header">Distinguishing between AI and Human Newscasters</h1>', unsafe_allow_html=True)
     st.markdown("**Research Study: How Linguistic Features Affect Perception of AI vs Human Speech**")
     
+    # Show Firebase status
+    with st.expander("🔍 System Status (Debug Info)", expanded=False):
+        if firebase_service:
+            if firebase_service.is_available():
+                st.success("✅ Firebase: Connected and ready")
+            else:
+                st.error("❌ Firebase: Not available")
+                st.info("Check Streamlit secrets configuration")
+        else:
+            st.error("❌ Firebase service failed to initialize")
+        
+        # Check audio files
+        all_files = get_all_audio_files()
+        st.info(f"📁 General audio clips found: {len(all_files['general'])}")
+        st.info(f"📁 Language-specific folders: {len(all_files['language_specific'])}")
+        for lang, files in all_files['language_specific'].items():
+            st.info(f"  - {lang}: {len(files)} clips")
+    
     # Check if audio files exist
     all_files = get_all_audio_files()
     if not all_files["general"] and not all_files["language_specific"]:
