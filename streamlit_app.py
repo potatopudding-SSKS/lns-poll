@@ -692,9 +692,11 @@ def show_audio_questions():
     st.markdown(f'<div class="audio-section">', unsafe_allow_html=True)
     st.subheader(f"{clip_data['title']}")
     
-    # Display audio file
+    # Display audio file - read as bytes to avoid caching issues
     if os.path.exists(clip_data['file']):
-        st.audio(clip_data['file'])
+        with open(clip_data['file'], 'rb') as audio_file:
+            audio_bytes = audio_file.read()
+        st.audio(audio_bytes, format='audio/mp3')
     else:
         st.warning(f"Audio file not found: {clip_data['file']}")
     
