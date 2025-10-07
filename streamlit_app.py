@@ -490,7 +490,7 @@ def save_response(response_data):
     # Try Firebase first
     if firebase_service and firebase_service.is_available():
         try:
-            st.info("🔥 Attempting to save to Firebase...")
+            # st.info("🔥 Attempting to save to Firebase...")
             success = firebase_service.save_response(response_data)
             if success:
                 st.success("✅ Data saved to Firebase successfully!")
@@ -500,10 +500,12 @@ def save_response(response_data):
                 st.session_state.responses.append(response_data)
                 return True
             else:
-                st.error("❌ Firebase save returned False - trying fallback...")
+                # st.error("❌ Firebase save returned False - trying fallback...")
+                pass
         except Exception as e:
-            st.error(f"❌ Firebase error: {str(e)}")
-            st.error(f"Error type: {type(e).__name__}")
+            # st.error(f"❌ Firebase error: {str(e)}")
+            # st.error(f"Error type: {type(e).__name__}")
+            pass
     else:
         st.warning("⚠️ Firebase service not available")
     
@@ -521,8 +523,9 @@ def save_response(response_data):
                 st.session_state.responses.append(response_data)
                 return True
             except Exception as e:
-                st.error(f"❌ Google Sheets error: {str(e)}")
-    
+                # st.error(f"❌ Google Sheets error: {str(e)}")
+                pass
+
     # Final fallback to local storage
     st.warning("💾 Saving to local storage...")
     if 'responses' not in st.session_state:
@@ -625,10 +628,11 @@ def main():
             if firebase_service.is_available():
                 st.success("✅ Firebase: Connected and ready")
             else:
-                st.error("❌ Firebase: Not available")
+                # st.error("❌ Firebase: Not available")
                 st.info("Check Streamlit secrets configuration")
         else:
-            st.error("❌ Firebase service failed to initialize")
+            # st.error("❌ Firebase service failed to initialize")
+            pass
         
         # Check audio files
         all_files = get_all_audio_files()
