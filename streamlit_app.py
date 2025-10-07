@@ -11,8 +11,8 @@ import random
 from streamlit_sortables import sort_items
 
 # Configuration variables
-N_RANDOM_CLIPS = 1  # Number of random clips to show all participants
-M_LANGUAGE_CLIPS = 0  # Number of language-specific clips to show
+N_RANDOM_CLIPS = 10  # Number of random clips to show all participants
+M_LANGUAGE_CLIPS = 5  # Number of language-specific clips to show
 
 # Initialize Firebase service with caching
 @st.cache_resource
@@ -490,24 +490,15 @@ def save_response(response_data):
     # Try Firebase first
     if firebase_service and firebase_service.is_available():
         try:
-            # st.info("🔥 Attempting to save to Firebase...")
             success = firebase_service.save_response(response_data)
             if success:
-                st.success("✅ Data saved to Firebase successfully!")
                 # Update session state
                 if 'responses' not in st.session_state:
                     st.session_state.responses = []
                 st.session_state.responses.append(response_data)
                 return True
-            else:
-                # st.error("❌ Firebase save returned False - trying fallback...")
-                pass
         except Exception as e:
-            # st.error(f"❌ Firebase error: {str(e)}")
-            # st.error(f"Error type: {type(e).__name__}")
-            pass
-    else:
-        st.warning("⚠️ Firebase service not available")
+            pass  # Silently fail and try fallbacks
     
     # Fallback to Google Sheets
     if CLOUD_STORAGE_AVAILABLE and "gcp_service_account" in st.secrets:
@@ -517,22 +508,17 @@ def save_response(response_data):
         # Check if we have real credentials (not placeholders)
         if project_id and project_id != "your-project-id" and "BEGIN PRIVATE KEY" in private_key and "..." not in private_key:
             try:
-                st.info("📊 Attempting to save to Google Sheets...")
                 save_to_google_sheets(response_data)
-                st.success("✅ Data saved to Google Sheets!")
                 st.session_state.responses.append(response_data)
                 return True
             except Exception as e:
-                # st.error(f"❌ Google Sheets error: {str(e)}")
-                pass
-
+                pass  # Silently fail and try local storage
+    
     # Final fallback to local storage
-    st.warning("💾 Saving to local storage...")
     if 'responses' not in st.session_state:
         st.session_state.responses = []
     st.session_state.responses.append(response_data)
     save_responses(st.session_state.responses)
-    st.info("✅ Data saved locally")
     return True
 
 def save_to_google_sheets(response_data):
@@ -622,25 +608,6 @@ def main():
     st.markdown('<h1 class="main-header">Distinguishing between AI and Human Newscasters</h1>', unsafe_allow_html=True)
     st.markdown("**Research Study: How Linguistic Features Affect Perception of AI vs Human Speech**")
     
-    # Show Firebase status
-    with st.expander("🔍 System Status (Debug Info)", expanded=False):
-        if firebase_service:
-            if firebase_service.is_available():
-                st.success("✅ Firebase: Connected and ready")
-            else:
-                # st.error("❌ Firebase: Not available")
-                st.info("Check Streamlit secrets configuration")
-        else:
-            # st.error("❌ Firebase service failed to initialize")
-            pass
-        
-        # Check audio files
-        all_files = get_all_audio_files()
-        st.info(f"📁 General audio clips found: {len(all_files['general'])}")
-        st.info(f"📁 Language-specific folders: {len(all_files['language_specific'])}")
-        for lang, files in all_files['language_specific'].items():
-            st.info(f"  - {lang}: {len(files)} clips")
-    
     # Check if audio files exist
     all_files = get_all_audio_files()
     if not all_files["general"] and not all_files["language_specific"]:
@@ -714,11 +681,9 @@ def show_audio_questions():
     st.markdown(f'<div class="audio-section">', unsafe_allow_html=True)
     st.subheader(f"{clip_data['title']}")
     
-    # Display audio file - read as bytes to avoid caching issues
+    # Display audio file
     if os.path.exists(clip_data['file']):
-        with open(clip_data['file'], 'rb') as audio_file:
-            audio_bytes = audio_file.read()
-        st.audio(audio_bytes, format='audio/mp3')
+        st.audio(clip_data['file'])
     else:
         st.warning(f"Audio file not found: {clip_data['file']}")
     
