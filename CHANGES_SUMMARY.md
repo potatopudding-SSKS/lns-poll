@@ -34,13 +34,16 @@ audio/
 #### Selection Logic
 1. **All participants** receive N (10) random clips from `audio/` root folder
 2. **Language match**: If mother tongue matches a subfolder name (case-insensitive), add M (5) random clips from that subfolder
-3. Each participant gets a unique randomized set of clips
+3. **Speed variant filtering**: If both `clip.mp3` and `clip_spedup.mp3` exist, randomly pick ONE version per participant
+4. **Display**: Clips shown as "Audio Clip 1", "Audio Clip 2", etc. (not filenames)
+5. Each participant gets a unique randomized set of clips
 
 ### 3. Key Function Updates
 
 #### New Functions
-- `get_all_audio_files()`: Scans audio folder and subfolders, returns organized structure
-- `create_audio_clip_dict()`: Creates standardized clip dictionary with questions
+- `filter_speed_duplicates()`: Filters out speed duplicates, randomly picking one version (normal or spedup)
+- `get_all_audio_files()`: Scans audio folder and subfolders, returns organized structure with duplicates filtered
+- `create_audio_clip_dict()`: Creates standardized clip dictionary with questions and numbered titles
 - `get_participant_audio_clips(mother_tongue)`: Generates randomized clip selection for each participant
 
 #### Modified Functions

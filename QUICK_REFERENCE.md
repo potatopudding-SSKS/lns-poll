@@ -24,24 +24,33 @@ M_LANGUAGE_CLIPS = 5  # Language-specific clips (if mother tongue matches)
 
 ```
 audio/
-├── general_clip1.mp3     ← N clips randomly selected from here
-├── general_clip2.mp3
+├── clip1.mp3                ← N clips randomly selected from here
+├── clip2.mp3
+├── clip2_spedup.mp3         ← Speed variant (only ONE picked)
 ├── ...
-├── english/              ← M clips randomly selected if mother tongue = "English"
+├── english/                 ← M clips if mother tongue = "English"
 │   ├── en_clip1.mp3
+│   ├── en_clip1_spedup.mp3  ← Speed variant
 │   └── ...
-├── spanish/              ← M clips randomly selected if mother tongue = "Spanish"
+├── spanish/                 ← M clips if mother tongue = "Spanish"
 │   └── ...
-└── mandarin/             ← M clips randomly selected if mother tongue = "Mandarin"
+└── mandarin/                ← M clips if mother tongue = "Mandarin"
     └── ...
 ```
+
+### Speed Variants
+- Name files: `clip.mp3` and `clip_spedup.mp3`
+- System randomly picks ONE version per participant
+- Never shows both versions to same person
 
 ## Participant Flow
 
 1. **Enter Info** → Age + Mother Tongue
 2. **System Generates** → N random clips + M language clips (if match)
+   - Filters speed duplicates (picks one version randomly)
+   - Assigns sequential numbers: "Audio Clip 1", "Audio Clip 2", etc.
 3. **For Each Clip**:
-   - Listen to audio
+   - Listen to audio (displayed as "Audio Clip N")
    - Answer 3 rating questions
    - Rank 5 linguistic features
    - Answer 10 follow-up questions

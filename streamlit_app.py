@@ -355,6 +355,33 @@ FOLLOW_UP_QUESTIONS = {
     ]
 }
 
+def filter_speed_duplicates(file_list):
+    """Filter out speed duplicates, keeping only one version (normal or spedup)"""
+    # Group files by base name (without _spedup suffix)
+    file_groups = {}
+    
+    for file_path in file_list:
+        filename = os.path.basename(file_path)
+        name_without_ext = os.path.splitext(filename)[0]
+        
+        # Remove _spedup suffix to get base name
+        if name_without_ext.endswith('_spedup'):
+            base_name = name_without_ext[:-7]  # Remove '_spedup'
+        else:
+            base_name = name_without_ext
+        
+        # Store both versions if they exist
+        if base_name not in file_groups:
+            file_groups[base_name] = []
+        file_groups[base_name].append(file_path)
+    
+    # For each group, randomly pick one version
+    selected_files = []
+    for base_name, versions in file_groups.items():
+        selected_files.append(random.choice(versions))
+    
+    return selected_files
+
 def get_all_audio_files():
     """Get all audio files from audio folder and subfolders organized by location"""
     audio_folder = "audio"
@@ -371,6 +398,9 @@ def get_all_audio_files():
         if os.path.isfile(file_path) and any(file.lower().endswith(ext) for ext in audio_extensions):
             general_files.append(file_path)
     
+    # Filter out speed duplicates from general files
+    general_files = filter_speed_duplicates(general_files)
+    
     # Get language-specific audio files (subfolders)
     for item in os.listdir(audio_folder):
         item_path = os.path.join(audio_folder, item)
@@ -381,15 +411,15 @@ def get_all_audio_files():
                 if os.path.isfile(file_path) and any(file.lower().endswith(ext) for ext in audio_extensions):
                     language_files.append(file_path)
             if language_files:
-                language_specific[item.lower()] = language_files
+                # Filter out speed duplicates from language-specific files
+                language_specific[item.lower()] = filter_speed_duplicates(language_files)
     
     return {"general": general_files, "language_specific": language_specific}
 
 def create_audio_clip_dict(file_path, clip_number):
     """Create a standardized audio clip dictionary"""
-    filename = os.path.basename(file_path)
-    name_without_ext = os.path.splitext(filename)[0]
-    title = name_without_ext.replace("_", " ").replace("-", " ").title()
+    # Use simple numbered title instead of filename
+    title = f"Audio Clip {clip_number}"
     
     return {
         "file": file_path,
