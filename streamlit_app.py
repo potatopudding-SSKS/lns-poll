@@ -455,12 +455,55 @@ def get_participant_audio_clips(mother_tongue=None):
     selected_clips = {}
     clip_counter = 1
     
-    # Select N random general clips
+    # Select N random general clips with balanced news_clip/news_real distribution
     general_files = all_files["general"]
     if len(general_files) > 0:
         n_clips = min(N_RANDOM_CLIPS, len(general_files))
-        selected_general = random.sample(general_files, n_clips)
-        
+
+        news_clip_pool = [f for f in general_files if os.path.basename(f).lower().startswith("news_clip_")]
+        news_real_pool = [f for f in general_files if os.path.basename(f).lower().startswith("news_real_")]
+        categorized_files = set(news_clip_pool + news_real_pool)
+        other_general_pool = [f for f in general_files if f not in categorized_files]
+
+        random.shuffle(news_clip_pool)
+        random.shuffle(news_real_pool)
+        random.shuffle(other_general_pool)
+
+        clip_quota = n_clips // 2
+        real_quota = n_clips - clip_quota
+        if n_clips % 2 and len(news_clip_pool) > len(news_real_pool):
+            clip_quota, real_quota = real_quota, clip_quota
+
+        selected_general = []
+        clip_selected_count = 0
+        real_selected_count = 0
+
+        clip_take = min(clip_quota, len(news_clip_pool))
+        for _ in range(clip_take):
+            selected_general.append(news_clip_pool.pop())
+            clip_selected_count += 1
+
+        real_take = min(real_quota, len(news_real_pool))
+        for _ in range(real_take):
+            selected_general.append(news_real_pool.pop())
+            real_selected_count += 1
+
+        remaining_slots = n_clips - len(selected_general)
+        while remaining_slots > 0:
+            if news_clip_pool and (clip_selected_count <= real_selected_count or not news_real_pool):
+                selected_general.append(news_clip_pool.pop())
+                clip_selected_count += 1
+            elif news_real_pool:
+                selected_general.append(news_real_pool.pop())
+                real_selected_count += 1
+            elif other_general_pool:
+                selected_general.append(other_general_pool.pop())
+            else:
+                break
+            remaining_slots -= 1
+
+        random.shuffle(selected_general)
+
         for file_path in selected_general:
             clip_id = f"clip_{clip_counter}"
             selected_clips[clip_id] = create_audio_clip_dict(file_path, clip_counter)
