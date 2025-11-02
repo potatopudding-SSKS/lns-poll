@@ -384,13 +384,7 @@ def render_message(text, variant="neutral", container=None):
         st.markdown(html, unsafe_allow_html=True)
 
 # Linguistic features for ranking with explanations
-LINGUISTIC_FEATURES = [
-    "Rate of speech",
-    "Tone",
-    "Inflection",
-    "Intonation",
-    "Stress"
-]
+LINGUISTIC_FEATURES = []
 
 # Explanations for linguistic features
 FEATURE_EXPLANATIONS = {
@@ -400,6 +394,11 @@ FEATURE_EXPLANATIONS = {
     "Intonation": "The overall melody and flow of the speech",
     "Stress": "Which words or parts the speaker emphasizes to make them stand out"
 }
+
+for i in FEATURE_EXPLANATIONS.keys():
+    temp = ''
+    temp = temp + i + " - " + FEATURE_EXPLANATIONS[i]
+    LINGUISTIC_FEATURES.append(temp)
 
 # Follow-up questions based on most influential feature
 FOLLOW_UP_QUESTIONS = {
@@ -862,11 +861,11 @@ def create_drag_drop_ranking(clip_id):
     """Create drag and drop ranking interface using streamlit-sortables."""
     st.markdown("**Which of the following features do you think influenced your opinion the most?**")
 
-    st.markdown("**Linguistic Feature Definitions:**")
-    for feature in LINGUISTIC_FEATURES:
-        explanation = FEATURE_EXPLANATIONS.get(feature)
-        if explanation:
-            st.markdown(f"• **{feature}**: {explanation}")
+    # st.markdown("**Linguistic Feature Definitions:**")
+    # for feature in LINGUISTIC_FEATURES:
+    #     explanation = FEATURE_EXPLANATIONS.get(feature)
+    #     if explanation:
+    #         st.markdown(f"• **{feature}**: {explanation}")
 
     st.markdown("---")
     st.markdown("*Drag and drop to rearrange from most influential (top) to least influential (bottom):*")
@@ -883,9 +882,9 @@ def create_drag_drop_ranking(clip_id):
         )
         st.session_state[order_key] = sorted_items
 
-        st.markdown("**Your Current Ranking:**")
-        for index, item in enumerate(sorted_items):
-            st.markdown(f"**{index + 1}. {item}**")
+        # st.markdown("**Your Current Ranking:**")
+        # for index, item in enumerate(sorted_items):
+        #     st.markdown(f"**{index + 1}. {item}**")
 
         ranking_dict = {feature: idx + 1 for idx, feature in enumerate(sorted_items)}
         return ranking_dict, sorted_items[:2]
@@ -923,9 +922,9 @@ def render_follow_up_questions(clip_id):
 
     for feature, questions in FOLLOW_UP_QUESTIONS.items():
         st.markdown(f"**{feature}**")
-        explanation = FEATURE_EXPLANATIONS.get(feature)
-        if explanation:
-            st.markdown(f"*{explanation}*")
+        # explanation = FEATURE_EXPLANATIONS.get(feature)
+        # if explanation:
+        #     st.markdown(f"*{explanation}*")
 
         feature_key = normalize_feature_key(feature)
 
@@ -982,12 +981,12 @@ def show_clip_page():
     st.markdown("---")
     ranking_dict, top_features = create_drag_drop_ranking(current_clip_id)
 
-    render_message("You will be asked follow-up questions about each linguistic feature.")
+    # render_message("You will be asked follow-up questions about each linguistic feature.")
 
     st.markdown("---")
     st.markdown(f'<div class="follow-up-section">', unsafe_allow_html=True)
-    st.subheader("Follow-up Questions")
-    st.markdown("Please answer the following questions about each linguistic feature:")
+    # st.subheader("Follow-up Questions")
+    # st.markdown("Please answer the following questions about each linguistic feature:")
     st.markdown('</div>', unsafe_allow_html=True)
 
     follow_up_responses, follow_up_missing = render_follow_up_questions(current_clip_id)
