@@ -1111,22 +1111,22 @@ def show_completion_page():
 
 
 def main():
-    if 'theme_choice' not in st.session_state:
-        st.session_state.theme_choice = THEME_OPTIONS[0]
+    # if 'theme_choice' not in st.session_state:
+    #     st.session_state.theme_choice = THEME_OPTIONS[0]
 
-    with st.container():
-        st.markdown('<div class="theme-switcher">', unsafe_allow_html=True)
-        theme_choice = st.select_slider(
-            "Display theme",
-            options=THEME_OPTIONS,
-            value=st.session_state.theme_choice,
-            key="theme_selector"
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
+    # with st.container():
+    #     st.markdown('<div class="theme-switcher">', unsafe_allow_html=True)
+    #     theme_choice = st.select_slider(
+    #         "Display theme",
+    #         options=THEME_OPTIONS,
+    #         value=st.session_state.theme_choice,
+    #         key="theme_selector"
+    #     )
+    #     st.markdown('</div>', unsafe_allow_html=True)
 
-    if theme_choice != st.session_state.theme_choice:
-        st.session_state.theme_choice = theme_choice
-    apply_theme(st.session_state.theme_choice)
+    # if theme_choice != st.session_state.theme_choice:
+    #     st.session_state.theme_choice = theme_choice
+    # apply_theme(st.session_state.theme_choice)
 
     st.markdown('<h1 class="main-header">Distinguishing between AI and Human Newscasters</h1>', unsafe_allow_html=True)
     st.markdown("**Research Study: How Linguistic Features Affect Perception of AI vs Human Speech**")
