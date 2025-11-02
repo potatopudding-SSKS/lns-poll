@@ -255,21 +255,21 @@ st.markdown("""
 
 # Linguistic features for ranking with explanations
 LINGUISTIC_FEATURES = [
-    "Rate of speech",
-    "Tone", 
-    "Inflection",
-    "Intonation",
-    "Stress"
+    "Rate of speech - Is the speaker too fast or too slow?",
+    "Tone - Speaker's attitude or feeling",
+    "Inflection - How does the speaker's pitch change?",
+    "Intonation - What is the overall melody of the speaker's voice?",
+    "Stress - Emphasis on different words or parts of a sentence"
 ]
 
 # Explanations for linguistic features
-FEATURE_EXPLANATIONS = {
-    "Rate of speech": "How fast or slow the speaker talks",
-    "Tone": "The attitude or feeling in the speaker's voice (friendly, serious, confident, etc.)",
-    "Inflection": "How the voice goes up and down within words",
-    "Intonation": "The overall melody and flow of the speech",
-    "Stress": "Which words or parts the speaker emphasizes to make them stand out"
-}
+# FEATURE_EXPLANATIONS = {
+#     "Rate of speech": "How fast or slow the speaker talks",
+#     "Tone": "The attitude or feeling in the speaker's voice (friendly, serious, confident, etc.)",
+#     "Inflection": "How the voice goes up and down within words",
+#     "Intonation": "The overall melody and flow of the speech",
+#     "Stress": "Which words or parts the speaker emphasizes to make them stand out"
+# }
 
 # Follow-up questions based on most influential feature
 FOLLOW_UP_QUESTIONS = {
@@ -591,9 +591,9 @@ def create_drag_drop_ranking(clip_id):
     
     # Display feature explanations
     st.markdown("**Linguistic Feature Definitions:**")
-    for feature in LINGUISTIC_FEATURES:
-        if feature in FEATURE_EXPLANATIONS:
-            st.markdown(f"• **{feature}**: {FEATURE_EXPLANATIONS[feature]}")
+    # for feature in LINGUISTIC_FEATURES:
+        # if feature in FEATURE_EXPLANATIONS:
+        #     st.markdown(f"• **{feature}**: {FEATURE_EXPLANATIONS[feature]}")
     
     st.markdown("---")
     st.markdown("*Drag and drop to rearrange from most influential (top) to least influential (bottom):*")
@@ -804,8 +804,8 @@ def show_follow_up_questions():
         for feature in LINGUISTIC_FEATURES:
             if feature in FOLLOW_UP_QUESTIONS:
                 st.markdown(f"**{feature}**")
-                if feature in FEATURE_EXPLANATIONS:
-                    st.markdown(f"*{FEATURE_EXPLANATIONS[feature]}*")
+                # if feature in FEATURE_EXPLANATIONS:
+                #     st.markdown(f"*{FEATURE_EXPLANATIONS[feature]}*")
                 for question in FOLLOW_UP_QUESTIONS[feature]:
                     if question['type'] == 'slider':
                         response = st.select_slider(
