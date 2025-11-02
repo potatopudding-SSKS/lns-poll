@@ -9,6 +9,7 @@ import glob
 import pickle
 import random
 from copy import deepcopy
+from html import escape
 from streamlit_sortables import sort_items
 
 # Configuration variables
@@ -135,8 +136,8 @@ def save_responses(responses):
                 success = firebase_service.save_response(latest_response)
                 if success:
                     return
-        except Exception as e:
-            st.warning(f"Firebase save failed, falling back to local storage: {str(e)}")
+        except Exception:
+            pass
     
     # Fallback to local storage
     try:
@@ -165,76 +166,222 @@ if 'current_responses' not in st.session_state:
 if 'participant_audio_clips' not in st.session_state:
     st.session_state.participant_audio_clips = {}
 
-# Clean CSS for better styling
-st.markdown("""
-<style>
-    /* Increase overall font size */
-    .main .block-container {
-        font-size: 1.2rem;
+
+THEME_OPTIONS = ["Summery Light", "Vibrant Dark"]
+
+THEME_PALETTES = {
+    "Summery Light": {
+        "background": "#FFF9F1",
+        "text": "#2C3E50",
+        "primary": "#FF8A65",
+        "secondary": "#4DB6AC",
+        "accent": "#F9A825",
+        "card": "#FFFFFF",
+        "card_secondary": "#FFF3E0",
+        "notice_bg": "#FFF8E1",
+        "notice_border": "#FFE0B2",
+        "attention_bg": "#FFE5E5",
+        "attention_border": "#FFCDD2",
+        "success_bg": "#E8F5E9",
+        "success_border": "#C8E6C9",
+        "progress_track": "#FFE0B2",
+        "slider_track": "#FFB74D",
+        "slider_handle": "#FF7043"
+    },
+    "Vibrant Dark": {
+        "background": "#0B1120",
+        "text": "#E2E8F0",
+        "primary": "#F97316",
+        "secondary": "#22D3EE",
+        "accent": "#A855F7",
+        "card": "#111827",
+        "card_secondary": "#1F2937",
+        "notice_bg": "#1E293B",
+        "notice_border": "#334155",
+        "attention_bg": "#2C1C24",
+        "attention_border": "#F97316",
+        "success_bg": "#1E293B",
+        "success_border": "#10B981",
+        "progress_track": "#1F2937",
+        "slider_track": "#F97316",
+        "slider_handle": "#FB923C"
     }
-    
-    /* Larger headers */
-    .main-header {
-        font-size: 3rem;
-        color: #64B5F6;
-        text-align: center;
-        margin-bottom: 1rem;
-    }
-    
-    /* Larger subheaders */
-    h2, h3 {
-        font-size: 1.5rem !important;
-    }
-    
-    /* Larger radio button text */
-    .stRadio > div {
-        font-size: 1.1rem !important;
-    }
-    
-    /* Larger slider text and styling */
-    .stSlider > div {
-        font-size: 1.1rem !important;
-    }
-    
-    .stSlider > div > div > div {
-        font-size: 1.1rem !important;
-    }
-    
-    /* Larger form labels */
-    .stSelectbox > label, .stSlider > label, .stRadio > label, .stTextInput > label {
-        font-size: 1.2rem !important;
-        font-weight: 600 !important;
-    }
-    
-    /* Larger markdown text */
-    .stMarkdown p {
-        font-size: 1.1rem !important;
-    }
-    
-    .audio-section {
-        background-color: #1E1E1E;
-        padding: 1.5rem;
-        border-radius: 10px;
-        border-left: 4px solid #64B5F6;
-        margin: 1rem 0;
-        font-size: 1.1rem;
-    }
-    
-    .follow-up-section {
-        background-color: #0F172A;
-        padding: 1.5rem;
-        border-radius: 10px;
-        border-left: 4px solid #F59E0B;
-        margin: 1rem 0;
-        font-size: 1.1rem;
-    }
-    
-    .section-divider {
-        border-top: 2px solid #444;
-        margin: 2rem 0;
-    }
-</style>
-""", unsafe_allow_html=True)
+}
+
+
+MESSAGE_VARIANTS = {
+    "neutral": "notice-neutral",
+    "attention": "notice-attention",
+    "success": "notice-success"
+}
+
+
+def apply_theme(theme_name):
+    palette = THEME_PALETTES.get(theme_name, THEME_PALETTES[THEME_OPTIONS[0]])
+    css_template = """
+    <style>
+        body, .stApp {{
+            background-color: {background};
+            color: {text};
+        }}
+
+        .main .block-container {{
+            font-size: 1.2rem;
+            padding: 2rem 3rem;
+            background: transparent;
+        }}
+
+        .main-header {{
+            font-size: 3rem;
+            color: {primary};
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }}
+
+        h2, h3 {{
+            font-size: 1.5rem !important;
+            color: {text};
+        }}
+
+        .stSelectbox > label, .stSlider > label, .stRadio > label, .stTextInput > label {{
+            font-size: 1.15rem !important;
+            font-weight: 600 !important;
+            color: {text};
+        }}
+
+        .stMarkdown p {{
+            font-size: 1.05rem !important;
+            color: {text};
+        }}
+
+        .audio-section {{
+            background-color: {card};
+            padding: 1.5rem;
+            border-radius: 12px;
+            border-left: 4px solid {primary};
+            margin: 1rem 0;
+            color: {text};
+            box-shadow: 0 12px 24px rgba(0,0,0,0.04);
+        }}
+
+        .follow-up-section {{
+            background-color: {card_secondary};
+            padding: 1.5rem;
+            border-radius: 12px;
+            border-left: 4px solid {accent};
+            margin: 1rem 0;
+            color: {text};
+            box-shadow: 0 12px 24px rgba(0,0,0,0.04);
+        }}
+
+        .notice-neutral {{
+            background-color: {notice_bg};
+            border: 1px solid {notice_border};
+            border-radius: 10px;
+            padding: 0.85rem 1rem;
+            margin: 0.75rem 0;
+            color: {text};
+        }}
+
+        .notice-attention {{
+            background-color: {attention_bg};
+            border: 1px solid {attention_border};
+            border-radius: 10px;
+            padding: 0.85rem 1rem;
+            margin: 0.75rem 0;
+            color: {text};
+        }}
+
+        .notice-success {{
+            background-color: {success_bg};
+            border: 1px solid {success_border};
+            border-radius: 10px;
+            padding: 0.85rem 1rem;
+            margin: 0.75rem 0;
+            color: {text};
+        }}
+
+        div[data-testid="stProgress"] {{
+            height: 14px;
+            border-radius: 8px;
+            background-color: {progress_track};
+        }}
+
+        div[data-testid="stProgress"] div[role="progressbar"] {{
+            background-color: {primary};
+            border-radius: 8px;
+        }}
+
+        div[data-testid="stProgress"] div[role="progressbar"] > div {{
+            background-color: {secondary};
+        }}
+
+        .stSlider > div {{
+            font-size: 1.05rem !important;
+        }}
+
+        .stSlider [role="slider"] {{
+            background-color: {slider_handle} !important;
+            box-shadow: none !important;
+        }}
+
+        .stSlider > div > div > div {{
+            background: linear-gradient(90deg, {slider_track}, {primary});
+        }}
+
+        .stSelectbox > div > div {{
+            background-color: {card};
+            color: {text};
+        }}
+
+        .theme-switcher {{
+            background-color: {card};
+            border: 1px solid {notice_border};
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1.5rem;
+        }}
+
+        .theme-switcher label {{
+            color: {text};
+            font-size: 0.95rem;
+            font-weight: 600;
+        }}
+
+        .theme-switcher .stSlider > div > div {{
+            background-color: transparent;
+        }}
+
+        .stButton > button {{
+            background: {primary};
+            color: {card};
+            border: none;
+            border-radius: 999px;
+            padding: 0.6rem 1.5rem;
+            font-weight: 600;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+        }}
+
+        .stButton > button:hover {{
+            background: {accent};
+        }}
+
+        .stRadio > div, .stSelectbox > div, .stTextInput > div {{
+            color: {text};
+        }}
+    </style>
+    """
+
+    st.markdown(css_template.format(**palette), unsafe_allow_html=True)
+
+
+def render_message(text, variant="neutral", container=None):
+    css_class = MESSAGE_VARIANTS.get(variant, MESSAGE_VARIANTS['neutral'])
+    html = f'<div class="{css_class}">{escape(str(text))}</div>'
+    if container is not None:
+        container.markdown(html, unsafe_allow_html=True)
+    else:
+        st.markdown(html, unsafe_allow_html=True)
 
 # Linguistic features for ranking with explanations
 LINGUISTIC_FEATURES = [
@@ -743,8 +890,8 @@ def create_drag_drop_ranking(clip_id):
         ranking_dict = {feature: idx + 1 for idx, feature in enumerate(sorted_items)}
         return ranking_dict, sorted_items[:2]
 
-    except Exception as error:
-        st.error(f"Drag-and-drop failed: {error}")
+    except Exception:
+        render_message("Drag-and-drop is temporarily unavailable. Please use the manual selectors.", variant="attention")
         st.markdown("**Using manual ranking instead:**")
 
         first_choice = st.selectbox(
@@ -810,7 +957,7 @@ def show_clip_page():
     participant_clips = st.session_state.participant_audio_clips
 
     if not participant_clips:
-        st.error("No audio clips assigned. Please restart the survey.")
+        render_message("No audio clips assigned. Please restart the survey.", variant="attention")
         return
 
     clip_ids = list(participant_clips.keys())
@@ -825,7 +972,7 @@ def show_clip_page():
     if os.path.exists(clip_data['file']):
         st.audio(clip_data['file'])
     else:
-        st.warning(f"Audio file not found: {clip_data['file']}")
+        render_message(f"Audio file not found: {clip_data['file']}", variant="attention")
 
     st.markdown("**Please listen to the audio clip above and answer the following questions:**")
     st.markdown('</div>', unsafe_allow_html=True)
@@ -835,7 +982,7 @@ def show_clip_page():
     st.markdown("---")
     ranking_dict, top_features = create_drag_drop_ranking(current_clip_id)
 
-    st.info("You will be asked follow-up questions about each linguistic feature.")
+    render_message("You will be asked follow-up questions about each linguistic feature.")
 
     st.markdown("---")
     st.markdown(f'<div class="follow-up-section">', unsafe_allow_html=True)
@@ -864,7 +1011,7 @@ def show_clip_page():
                 missing_fields.append("Top feature selection")
 
             if missing_fields:
-                error_placeholder.error("Please complete all questions before continuing.")
+                render_message("Please complete all questions before continuing.", variant="attention", container=error_placeholder)
             else:
                 clip_payload = {}
                 clip_payload.update(standard_responses)
@@ -883,7 +1030,7 @@ def show_clip_page():
                         st.session_state.survey_step = 'completed'
                         st.rerun()
                     else:
-                        error_placeholder.error("Unable to save your responses. Please try again.")
+                        render_message("Unable to save your responses. Please try again.", variant="attention", container=error_placeholder)
 
 
 def show_participant_info():
@@ -911,17 +1058,17 @@ def show_participant_info():
 
     if submit:
         if not mother_tongue.strip():
-            st.error("Please enter your mother tongue.")
+            render_message("Please enter your mother tongue.", variant="attention")
             return
 
         if competence_choice == "Select a language":
-            st.error("Please choose your level of competence among the listed languages.")
+            render_message("Please choose your level of competence among the listed languages.", variant="attention")
             return
 
         participant_clips = get_participant_audio_clips(mother_tongue.strip())
 
         if not participant_clips:
-            st.error("No audio files found. Please contact the administrator.")
+            render_message("No audio files found. Please contact the administrator.", variant="attention")
             return
 
         participant_id = generate_participant_id()
@@ -943,7 +1090,7 @@ def show_participant_info():
 
 def show_completion_page():
     """Show survey completion page."""
-    st.success("Survey Completed Successfully!")
+    render_message("Survey completed successfully!", variant="success")
     st.markdown("Thank you for participating in our research on distinguishing between AI and human newscasters!")
     st.balloons()
 
@@ -964,13 +1111,30 @@ def show_completion_page():
 
 
 def main():
+    if 'theme_choice' not in st.session_state:
+        st.session_state.theme_choice = THEME_OPTIONS[0]
+
+    with st.container():
+        st.markdown('<div class="theme-switcher">', unsafe_allow_html=True)
+        theme_choice = st.select_slider(
+            "Display theme",
+            options=THEME_OPTIONS,
+            value=st.session_state.theme_choice,
+            key="theme_selector"
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    if theme_choice != st.session_state.theme_choice:
+        st.session_state.theme_choice = theme_choice
+    apply_theme(st.session_state.theme_choice)
+
     st.markdown('<h1 class="main-header">Distinguishing between AI and Human Newscasters</h1>', unsafe_allow_html=True)
     st.markdown("**Research Study: How Linguistic Features Affect Perception of AI vs Human Speech**")
 
     all_files = get_all_audio_files()
     if not all_files["general"] and not all_files["language_specific"]:
-        st.error("No audio files found in the 'audio' folder. Please add audio files (.mp3, .wav, .m4a, .ogg) to continue.")
-        st.info("Expected audio folder location: `audio/`")
+        render_message("No audio files found in the 'audio' folder. Please add audio files (.mp3, .wav, .m4a, .ogg) to continue.", variant="attention")
+        render_message("Expected audio folder location: audio/", variant="neutral")
         return
 
     if st.session_state.survey_step == 'clip_survey':
