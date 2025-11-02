@@ -8,6 +8,7 @@ import os
 import glob
 import pickle
 import random
+from copy import deepcopy
 from streamlit_sortables import sort_items
 
 # Configuration variables
@@ -145,23 +146,8 @@ def save_responses(responses):
         pass  # Silently ignore save errors
 
 def save_single_response(response_data):
-    """Save a single response to Firebase or fallback storage"""
-    # Try Firebase first
-    if firebase_service.is_available():
-        try:
-            success = firebase_service.save_response(response_data)
-            if success:
-                return True
-        except Exception as e:
-            st.warning(f"Firebase save failed: {str(e)}")
-    
-    # Fallback to adding to session state and local storage
-    if 'responses' not in st.session_state:
-        st.session_state.responses = []
-    
-    st.session_state.responses.append(response_data)
-    save_responses(st.session_state.responses)
-    return True
+    """Convenience wrapper to save a single response payload."""
+    return save_response(response_data)
 
 # Initialize session state for storing responses
 if 'responses' not in st.session_state:
@@ -175,9 +161,6 @@ if 'current_clip' not in st.session_state:
 
 if 'current_responses' not in st.session_state:
     st.session_state.current_responses = {}
-
-if 'ranking_complete' not in st.session_state:
-    st.session_state.ranking_complete = {}
 
 if 'participant_audio_clips' not in st.session_state:
     st.session_state.participant_audio_clips = {}
@@ -255,21 +238,21 @@ st.markdown("""
 
 # Linguistic features for ranking with explanations
 LINGUISTIC_FEATURES = [
-    "Rate of speech - Is the speaker too fast or too slow?",
-    "Tone - Speaker's attitude or feeling",
-    "Inflection - How does the speaker's pitch change?",
-    "Intonation - What is the overall melody of the speaker's voice?",
-    "Stress - Emphasis on different words or parts of a sentence"
+    "Rate of speech",
+    "Tone",
+    "Inflection",
+    "Intonation",
+    "Stress"
 ]
 
 # Explanations for linguistic features
-# FEATURE_EXPLANATIONS = {
-#     "Rate of speech": "How fast or slow the speaker talks",
-#     "Tone": "The attitude or feeling in the speaker's voice (friendly, serious, confident, etc.)",
-#     "Inflection": "How the voice goes up and down within words",
-#     "Intonation": "The overall melody and flow of the speech",
-#     "Stress": "Which words or parts the speaker emphasizes to make them stand out"
-# }
+FEATURE_EXPLANATIONS = {
+    "Rate of speech": "How fast or slow the speaker talks",
+    "Tone": "The attitude or feeling in the speaker's voice (friendly, serious, confident, etc.)",
+    "Inflection": "How the voice goes up and down within words",
+    "Intonation": "The overall melody and flow of the speech",
+    "Stress": "Which words or parts the speaker emphasizes to make them stand out"
+}
 
 # Follow-up questions based on most influential feature
 FOLLOW_UP_QUESTIONS = {
@@ -279,14 +262,26 @@ FOLLOW_UP_QUESTIONS = {
             "text": "Did you find the rate of speech to be natural?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
-            "labels": ["Too slow", "Just right", "Too fast"]
+            "value_labels": {
+                1: "Too slow",
+                2: "Slightly slow",
+                3: "Just right",
+                4: "Slightly fast",
+                5: "Too fast"
+            }
         },
         {
-            "id": "urgency_perception", 
+            "id": "urgency_perception",
             "text": "Did the speed make the news sound urgent?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
-            "labels": ["Very calm", "Normal", "Very urgent"]
+            "value_labels": {
+                1: "Very calm",
+                2: "Somewhat calm",
+                3: "Neutral",
+                4: "Somewhat urgent",
+                5: "Very urgent"
+            }
         }
     ],
     "Tone": [
@@ -295,14 +290,26 @@ FOLLOW_UP_QUESTIONS = {
             "text": "How formal did the speaker sound?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
-            "labels": ["Very casual", "Normal", "Very formal"]
+            "value_labels": {
+                1: "Very casual",
+                2: "Somewhat casual",
+                3: "Moderately formal",
+                4: "Quite formal",
+                5: "Very formal"
+            }
         },
         {
             "id": "tone_confidence",
             "text": "How confident did the speaker sound?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
-            "labels": ["Not confident", "Normal", "Very confident"]
+            "value_labels": {
+                1: "Not confident",
+                2: "Slightly confident",
+                3: "Moderately confident",
+                4: "Very confident",
+                5: "Extremely confident"
+            }
         }
     ],
     "Inflection": [
@@ -311,14 +318,26 @@ FOLLOW_UP_QUESTIONS = {
             "text": "Did the voice changes sound natural?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
-            "labels": ["Very fake", "Normal", "Very natural"]
+            "value_labels": {
+                1: "Very artificial",
+                2: "Somewhat artificial",
+                3: "Neutral",
+                4: "Somewhat natural",
+                5: "Very natural"
+            }
         },
         {
             "id": "inflection_understanding",
             "text": "Does the inflection affect your ability to understand the speech?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
-            "labels": ["Made it harder", "No difference", "Made it easier"]
+            "value_labels": {
+                1: "Much harder",
+                2: "Slightly harder",
+                3: "No difference",
+                4: "Slightly easier",
+                5: "Much easier"
+            }
         }
     ],
     "Intonation": [
@@ -327,14 +346,26 @@ FOLLOW_UP_QUESTIONS = {
             "text": "How much did the melodic pattern of the voice change?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
-            "labels": ["Very flat", "Normal", "Very varied"]
+            "value_labels": {
+                1: "Very flat",
+                2: "Mostly flat",
+                3: "Moderate variety",
+                4: "Quite varied",
+                5: "Very varied"
+            }
         },
         {
             "id": "emotional_impact",
             "text": "How did the melodic pattern affect the way you felt?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
-            "labels": ["Negative feeling", "No feeling", "Positive feeling"]
+            "value_labels": {
+                1: "Strongly negative",
+                2: "Slightly negative",
+                3: "Neutral",
+                4: "Slightly positive",
+                5: "Strongly positive"
+            }
         }
     ],
     "Stress": [
@@ -343,17 +374,45 @@ FOLLOW_UP_QUESTIONS = {
             "text": "Were the right words emphasized?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
-            "labels": ["Wrong words", "Okay", "Right words"]
+            "value_labels": {
+                1: "Wrong emphasis",
+                2: "Mostly wrong",
+                3: "Mixed",
+                4: "Mostly right",
+                5: "Exactly right"
+            }
         },
         {
             "id": "stress_comprehension",
             "text": "Did the emphasized words help you understand?",
             "type": "slider",
             "scale": [1, 2, 3, 4, 5],
-            "labels": ["Made it harder", "No difference", "Made it easier"]
+            "value_labels": {
+                1: "Much harder",
+                2: "Slightly harder",
+                3: "No difference",
+                4: "Slightly easier",
+                5: "Much easier"
+            }
         }
     ]
 }
+
+
+def create_slider_format_func(value_labels):
+    """Generate a format function that shows a tooltip for every slider value."""
+    value_labels = value_labels or {}
+
+    def _format(option):
+        label = value_labels.get(option)
+        return f"{option} - {label}" if label else str(option)
+
+    return _format
+
+
+def normalize_feature_key(text):
+    """Normalize feature text to a lowercase underscore key."""
+    return text.strip().lower().replace(" ", "_")
 
 def filter_speed_duplicates(file_list):
     """Filter out speed duplicates, keeping only one version (normal or spedup)"""
@@ -420,31 +479,50 @@ def create_audio_clip_dict(file_path, clip_number):
     """Create a standardized audio clip dictionary"""
     # Use simple numbered title instead of filename
     title = f"Audio Clip {clip_number}"
-    
+
     return {
         "file": file_path,
+        "file_name": os.path.basename(file_path),
         "title": title,
         "questions": [
             {
-                "id": f"attitude_{clip_number}",
+                "id": "attitude",
                 "text": "Did the reporter have an appropriate attitude while reporting?",
                 "type": "scale",
                 "scale": [1, 2, 3, 4, 5],
-                "labels": ["Not appropriate at all", "Very appropriate"]
+                "value_labels": {
+                    1: "Not appropriate at all",
+                    2: "Somewhat inappropriate",
+                    3: "Neutral",
+                    4: "Somewhat appropriate",
+                    5: "Very appropriate"
+                }
             },
             {
-                "id": f"naturalness_{clip_number}",
+                "id": "naturalness",
                 "text": "How natural does the speech sound?",
                 "type": "scale",
                 "scale": [1, 2, 3, 4, 5],
-                "labels": ["Very unnatural", "Very natural"]
+                "value_labels": {
+                    1: "Very unnatural",
+                    2: "Somewhat unnatural",
+                    3: "Neutral",
+                    4: "Somewhat natural",
+                    5: "Very natural"
+                }
             },
             {
-                "id": f"trustworthiness_{clip_number}",
+                "id": "trustworthiness",
                 "text": "How trustworthy/credible does it seem?",
                 "type": "scale",
                 "scale": [1, 2, 3, 4, 5],
-                "labels": ["Not trustworthy/credible at all", "Very trustworthy/credible"]
+                "value_labels": {
+                    1: "Not trustworthy at all",
+                    2: "Slightly trustworthy",
+                    3: "Moderately trustworthy",
+                    4: "Very trustworthy",
+                    5: "Extremely trustworthy"
+                }
             }
         ]
     }
@@ -527,342 +605,388 @@ def get_participant_audio_clips(mother_tongue=None):
 AUDIO_CLIPS = {}
 
 def save_response(response_data):
-    """Save response with Firebase priority and proper error handling"""
-    response_data['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    # Try Firebase first
+    """Save response with Firebase priority and proper error handling."""
+    payload = deepcopy(response_data)
+    payload['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    if 'responses' not in st.session_state:
+        st.session_state.responses = []
+
     if firebase_service and firebase_service.is_available():
         try:
-            success = firebase_service.save_response(response_data)
-            if success:
-                # Update session state
-                if 'responses' not in st.session_state:
-                    st.session_state.responses = []
-                st.session_state.responses.append(response_data)
+            if firebase_service.save_response(payload):
+                st.session_state.responses.append(payload)
                 return True
-        except Exception as e:
-            pass  # Silently fail and try fallbacks
-    
-    # Fallback to Google Sheets
+        except Exception:
+            pass  # Fall back if Firebase write fails
+
     if CLOUD_STORAGE_AVAILABLE and "gcp_service_account" in st.secrets:
         project_id = st.secrets["gcp_service_account"].get("project_id", "")
         private_key = st.secrets["gcp_service_account"].get("private_key", "")
-        
-        # Check if we have real credentials (not placeholders)
+
         if project_id and project_id != "your-project-id" and "BEGIN PRIVATE KEY" in private_key and "..." not in private_key:
             try:
-                save_to_google_sheets(response_data)
-                st.session_state.responses.append(response_data)
+                save_to_google_sheets(payload)
+                st.session_state.responses.append(payload)
                 return True
-            except Exception as e:
-                pass  # Silently fail and try local storage
-    
-    # Final fallback to local storage
-    if 'responses' not in st.session_state:
-        st.session_state.responses = []
-    st.session_state.responses.append(response_data)
+            except Exception:
+                pass  # Fall back to local storage
+
+    st.session_state.responses.append(payload)
     save_responses(st.session_state.responses)
     return True
 
+
 def save_to_google_sheets(response_data):
-    """Save response to Google Sheets"""
+    """Save response to Google Sheets."""
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
     creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
     client = gspread.authorize(creds)
-    
+
     sheet = client.open_by_key(st.secrets["google_sheets"]["spreadsheet_id"]).sheet1
-    
-    # Convert response to row format - flatten all data
+
     row = [
         response_data.get('timestamp', ''),
         response_data.get('participant_id', ''),
         response_data.get('age', ''),
         response_data.get('mother_tongue', ''),
-        response_data.get('naturalness_1', ''),
-        response_data.get('trustworthiness_1', ''),
-        json.dumps(response_data)  # Store complete response as JSON
+        '',
+        '',
+        json.dumps(response_data)
     ]
-    
+
     sheet.append_row(row)
 
+
+def generate_participant_id():
+    """Generate a sequential participant identifier."""
+    next_numeric = None
+    if firebase_service and firebase_service.is_available():
+        try:
+            next_numeric = firebase_service.get_next_participant_id()
+        except Exception:
+            next_numeric = None
+
+    if not next_numeric:
+        local_counter = st.session_state.get('local_participant_counter', 0) + 1
+        st.session_state.local_participant_counter = local_counter
+        numeric_str = f"{local_counter:05d}"
+    else:
+        numeric_str = str(next_numeric).lstrip("P")
+        numeric_str = numeric_str.zfill(5)
+
+    return f"P{numeric_str}"
+
+
+def ensure_slider_default(key, default):
+    """Ensure a widget key has a default value in session state."""
+    if key not in st.session_state:
+        st.session_state[key] = default
+    return st.session_state[key]
+
+
+def render_standard_questions(clip_id, clip_data):
+    """Render standard rating questions for a clip."""
+    responses = {}
+    missing = []
+
+    for question in clip_data.get('questions', []):
+        scale = question.get('scale', [])
+        default_value = scale[len(scale) // 2] if scale else None
+        slider_key = f"{clip_id}_{question['id']}"
+        current_value = ensure_slider_default(slider_key, default_value)
+
+        value = st.select_slider(
+            question['text'],
+            options=scale,
+            key=slider_key,
+            value=current_value,
+            format_func=create_slider_format_func(question.get('value_labels', {}))
+        )
+
+        responses[question['id']] = value
+        if value is None:
+            missing.append(question['text'])
+
+    return responses, missing
+
+
 def create_drag_drop_ranking(clip_id):
-    """Create drag and drop ranking interface using streamlit-sortables"""
+    """Create drag and drop ranking interface using streamlit-sortables."""
     st.markdown("**Which of the following features do you think influenced your opinion the most?**")
-    
-    # Display feature explanations
-    # st.markdown("**Linguistic Feature Definitions:**")
-    # for feature in LINGUISTIC_FEATURES:
-        # if feature in FEATURE_EXPLANATIONS:
-        #     st.markdown(f"• **{feature}**: {FEATURE_EXPLANATIONS[feature]}")
-    
+
+    st.markdown("**Linguistic Feature Definitions:**")
+    for feature in LINGUISTIC_FEATURES:
+        explanation = FEATURE_EXPLANATIONS.get(feature)
+        if explanation:
+            st.markdown(f"• **{feature}**: {explanation}")
+
     st.markdown("---")
     st.markdown("*Drag and drop to rearrange from most influential (top) to least influential (bottom):*")
-    
-    # Use streamlit-sortables for drag and drop
+
+    order_key = f"{clip_id}_ranking_order"
+    initial_items = st.session_state.get(order_key, list(LINGUISTIC_FEATURES))
+
     try:
         sorted_items = sort_items(
-            LINGUISTIC_FEATURES,
+            initial_items,
             direction="vertical",
             key=f"sortable_{clip_id}",
             multi_containers=False
         )
-        
-        # Display current ranking
-        # st.markdown("**Your Current Ranking:**")
-        # for i, item in enumerate(sorted_items):
-        #     st.markdown(f"**{i+1}. {item}**")
-        
-        # Convert to ranking dictionary for processing
-        ranking_dict = {}
-        for i, feature in enumerate(sorted_items):
-            ranking_dict[feature] = i + 1  # 1 = most influential
-        
-        return ranking_dict, sorted_items[:2]  # Return top 2 features
-        
-    except Exception as e:
-        st.error(f"Drag-and-drop failed: {e}")
+        st.session_state[order_key] = sorted_items
+
+        st.markdown("**Your Current Ranking:**")
+        for index, item in enumerate(sorted_items):
+            st.markdown(f"**{index + 1}. {item}**")
+
+        ranking_dict = {feature: idx + 1 for idx, feature in enumerate(sorted_items)}
+        return ranking_dict, sorted_items[:2]
+
+    except Exception as error:
+        st.error(f"Drag-and-drop failed: {error}")
         st.markdown("**Using manual ranking instead:**")
-        
-        # Simple fallback - just ask for top 2 most influential
-        st.markdown("Please select your **top 2 most influential** features:")
-        
+
         first_choice = st.selectbox(
             "Most influential feature:",
             options=LINGUISTIC_FEATURES,
             key=f"first_choice_{clip_id}"
         )
-        
+
         remaining_features = [f for f in LINGUISTIC_FEATURES if f != first_choice]
         second_choice = st.selectbox(
             "Second most influential feature:",
             options=remaining_features,
             key=f"second_choice_{clip_id}"
         )
-        
-        # Create a simple ranking dict for compatibility
+
         ranking_dict = {first_choice: 1, second_choice: 2}
-        for i, feature in enumerate(LINGUISTIC_FEATURES):
+        for idx, feature in enumerate(LINGUISTIC_FEATURES):
             if feature not in ranking_dict:
-                ranking_dict[feature] = i + 3
-        
+                ranking_dict[feature] = idx + 3
+
+        st.session_state[order_key] = [first_choice, second_choice] + [f for f in LINGUISTIC_FEATURES if f not in {first_choice, second_choice}]
         return ranking_dict, [first_choice, second_choice]
 
-def main():
-    st.markdown('<h1 class="main-header">Distinguishing between AI and Human Newscasters</h1>', unsafe_allow_html=True)
-    st.markdown("**Research Study: How Linguistic Features Affect Perception of AI vs Human Speech**")
-    
-    # Check if audio files exist
-    all_files = get_all_audio_files()
-    if not all_files["general"] and not all_files["language_specific"]:
-        st.error("No audio files found in the 'audio' folder. Please add audio files (.mp3, .wav, .m4a, .ogg) to continue.")
-        st.info("Expected audio folder location: `audio/`")
-        return
-    
-    # Progress indicator
-    if st.session_state.survey_step != 'participant_info' and st.session_state.survey_step != 'completed':
-        participant_clips = st.session_state.participant_audio_clips
-        if participant_clips:
-            total_clips = len(participant_clips)
-            progress = (st.session_state.current_clip) / total_clips
-            st.progress(progress, text=f"Audio Clip {st.session_state.current_clip + 1} of {total_clips}")
-    
-    # Survey steps
-    if st.session_state.survey_step == 'participant_info':
-        show_participant_info()
-    elif st.session_state.survey_step == 'audio_questions':
-        show_audio_questions()
-    elif st.session_state.survey_step == 'ranking':
-        show_ranking_interface()
-    elif st.session_state.survey_step == 'follow_up':
-        show_follow_up_questions()
-    elif st.session_state.survey_step == 'completed':
-        show_completion_page()
 
-def show_participant_info():
-    """Show participant information form"""
-    st.header("Participant Information")
-    
-    with st.form("participant_form"):
-        age = st.number_input("Age", min_value=18, max_value=100, value=None)
-        mother_tongue = st.text_input("Mother tongue")
-        
-        if st.form_submit_button("Start Survey", type="primary"):
-            if not mother_tongue.strip():
-                st.error("Please enter your mother tongue.")
-            else:
-                # Generate randomized audio clips for this participant
-                participant_clips = get_participant_audio_clips(mother_tongue.strip())
-                
-                if not participant_clips:
-                    st.error("No audio files found. Please contact the administrator.")
-                    return
-                
-                st.session_state.participant_audio_clips = participant_clips
-                st.session_state.current_responses = {
-                    'participant_id': f"participant_{len(st.session_state.responses)+1}",
-                    'age': age,
-                    'mother_tongue': mother_tongue.strip(),
-                    'n_general_clips': sum(1 for k, v in participant_clips.items() if not any(lang in v['file'].lower() for lang in get_all_audio_files()['language_specific'].keys())),
-                    'n_language_clips': sum(1 for k, v in participant_clips.items() if any(lang in v['file'].lower() for lang in get_all_audio_files()['language_specific'].keys()))
-                }
-                st.session_state.survey_step = 'audio_questions'
-                st.session_state.current_clip = 0
-                st.rerun()
+def render_follow_up_questions(clip_id):
+    """Render follow-up slider questions for each linguistic feature."""
+    responses = {}
+    missing = []
 
-def show_audio_questions():
-    """Show audio questions for current clip"""
+    for feature, questions in FOLLOW_UP_QUESTIONS.items():
+        st.markdown(f"**{feature}**")
+        explanation = FEATURE_EXPLANATIONS.get(feature)
+        if explanation:
+            st.markdown(f"*{explanation}*")
+
+        feature_key = normalize_feature_key(feature)
+
+        for question in questions:
+            scale = question.get('scale', [])
+            default_value = scale[len(scale) // 2] if scale else None
+            slider_key = f"{clip_id}_{feature_key}_{question['id']}"
+            current_value = ensure_slider_default(slider_key, default_value)
+
+            value = st.select_slider(
+                question['text'],
+                options=scale,
+                key=slider_key,
+                value=current_value,
+                format_func=create_slider_format_func(question.get('value_labels', {}))
+            )
+
+            responses[f"{feature_key}_{question['id']}"] = value
+            if value is None:
+                missing.append(f"{feature}: {question['text']}")
+
+        st.markdown("---")
+
+    return responses, missing
+
+
+def show_clip_page():
+    """Render the full survey for the current clip on a single scrollable page."""
     participant_clips = st.session_state.participant_audio_clips
-    
+
     if not participant_clips:
         st.error("No audio clips assigned. Please restart the survey.")
         return
-    
+
     clip_ids = list(participant_clips.keys())
-    current_clip_id = clip_ids[st.session_state.current_clip]
+    current_index = st.session_state.current_clip
+    current_clip_id = clip_ids[current_index]
     clip_data = participant_clips[current_clip_id]
-    
+    clip_name = clip_data.get('file_name') or os.path.basename(clip_data['file'])
+
     st.markdown(f'<div class="audio-section">', unsafe_allow_html=True)
     st.subheader(f"{clip_data['title']}")
-    
-    # Display audio file
+
     if os.path.exists(clip_data['file']):
         st.audio(clip_data['file'])
     else:
         st.warning(f"Audio file not found: {clip_data['file']}")
-    
+
     st.markdown("**Please listen to the audio clip above and answer the following questions:**")
     st.markdown('</div>', unsafe_allow_html=True)
-    
-    with st.form(f"audio_form_{current_clip_id}"):
-        responses = {}
-        
-        # Standard questions for this clip
-        for question in clip_data['questions']:
-            if question['type'] == 'scale':
-                response = st.select_slider(
-                    question['text'],
-                    options=question['scale'],
-                    format_func=lambda x, labels=question['labels']: f"{x} - {labels[0] if x == 1 else labels[1] if x == 7 else ''}",
-                    key=f"{current_clip_id}_{question['id']}"
-                )
-                responses[question['id']] = response
-        
-        if st.form_submit_button("Continue to Ranking", type="primary"):
-            # Save current responses
-            st.session_state.current_responses.update(responses)
-            st.session_state.survey_step = 'ranking'
-            st.rerun()
 
-def show_ranking_interface():
-    """Show drag-and-drop ranking interface"""
-    participant_clips = st.session_state.participant_audio_clips
-    clip_ids = list(participant_clips.keys())
-    current_clip_id = clip_ids[st.session_state.current_clip]
-    
-    st.subheader(f"Feature Ranking - {participant_clips[current_clip_id]['title']}")
-    
-    # Create the drag-drop interface
-    ranking_dict, top_2_features = create_drag_drop_ranking(current_clip_id)
-    
-    st.info("You will be asked follow-up questions about each linguistic feature.")
-    
+    standard_responses, standard_missing = render_standard_questions(current_clip_id, clip_data)
+
     st.markdown("---")
-    
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        if st.button("← Back to Questions", key="back_to_questions"):
-            st.session_state.survey_step = 'audio_questions'
-            st.rerun()
-    
-    with col2:
-        if st.button("Continue to Follow-up →", type="primary", key="continue_to_followup"):
-            # Save rankings
-            for feature, rank in ranking_dict.items():
-                st.session_state.current_responses[f"{current_clip_id}_ranking_{feature.replace(' ', '_').lower()}"] = rank
-            
-            # Save top 2 features for follow-up questions
-            st.session_state.current_responses[f"{current_clip_id}_top_features"] = top_2_features
-            st.session_state.survey_step = 'follow_up'
-            st.rerun()
+    ranking_dict, top_features = create_drag_drop_ranking(current_clip_id)
 
-def show_follow_up_questions():
-    """Show follow-up questions for all linguistic features"""
-    participant_clips = st.session_state.participant_audio_clips
-    clip_ids = list(participant_clips.keys())
-    current_clip_id = clip_ids[st.session_state.current_clip]
-    
+    st.info("You will be asked follow-up questions about each linguistic feature.")
+
+    st.markdown("---")
     st.markdown(f'<div class="follow-up-section">', unsafe_allow_html=True)
-    st.subheader(f"Follow-up Questions")
-    st.markdown(f"Please answer the following questions about each linguistic feature:")
+    st.subheader("Follow-up Questions")
+    st.markdown("Please answer the following questions about each linguistic feature:")
     st.markdown('</div>', unsafe_allow_html=True)
-    
-    with st.form(f"followup_form_{current_clip_id}"):
-        follow_up_responses = {}
-        
-        # Questions for all linguistic features
-        for feature in LINGUISTIC_FEATURES:
-            if feature in FOLLOW_UP_QUESTIONS:
-                st.markdown(f"**{feature}**")
-                # if feature in FEATURE_EXPLANATIONS:
-                #     st.markdown(f"*{FEATURE_EXPLANATIONS[feature]}*")
-                for question in FOLLOW_UP_QUESTIONS[feature]:
-                    if question['type'] == 'slider':
-                        response = st.select_slider(
-                            question['text'],
-                            options=question['scale'],
-                            value=3,  # Default to middle value
-                            format_func=lambda x, labels=question['labels']: f"{x} - {labels[0] if x == 1 else labels[1] if x == 3 else labels[2] if x == 5 else ''}",
-                            key=f"{current_clip_id}_followup_{feature.replace(' ', '_').lower()}_{question['id']}"
-                        )
-                    else:
-                        # Fallback for any remaining radio questions
-                        response = st.radio(
-                            question['text'],
-                            options=question.get('options', []),
-                            key=f"{current_clip_id}_followup_{feature.replace(' ', '_').lower()}_{question['id']}"
-                        )
-                    
-                    follow_up_responses[f"{current_clip_id}_followup_{feature.replace(' ', '_').lower()}_{question['id']}"] = response
-                
-                st.markdown("---")
-        
-        col1, col2 = st.columns([1, 1])
-        
-        with col1:
-            if st.form_submit_button("← Back to Ranking", key="back_to_ranking"):
-                st.session_state.survey_step = 'ranking'
+
+    follow_up_responses, follow_up_missing = render_follow_up_questions(current_clip_id)
+
+    error_placeholder = st.empty()
+
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+        if st.button("← Previous Clip", disabled=current_index == 0):
+            if current_index > 0:
+                st.session_state.current_clip -= 1
                 st.rerun()
-        
-        with col2:
-            if st.form_submit_button("Next →", type="primary", key="next_clip"):
-                # Save follow-up responses
-                st.session_state.current_responses.update(follow_up_responses)
-                
-                # Move to next clip or finish
-                participant_clips = st.session_state.participant_audio_clips
-                if st.session_state.current_clip < len(participant_clips) - 1:
+
+    with col2:
+        if st.button("Save and Continue →", type="primary"):
+            missing_fields = standard_missing + follow_up_missing
+            if not ranking_dict:
+                missing_fields.append("Feature ranking")
+            if len(top_features) < 2:
+                missing_fields.append("Top feature selection")
+
+            if missing_fields:
+                error_placeholder.error("Please complete all questions before continuing.")
+            else:
+                clip_payload = {}
+                clip_payload.update(standard_responses)
+                clip_payload.update(follow_up_responses)
+                clip_payload['feature_ranking'] = ranking_dict
+                clip_payload['top_features'] = top_features
+
+                st.session_state.current_responses.setdefault('clips', {})
+                st.session_state.current_responses['clips'][clip_name] = clip_payload
+
+                if current_index < len(clip_ids) - 1:
                     st.session_state.current_clip += 1
-                    st.session_state.survey_step = 'audio_questions'
+                    st.rerun()
                 else:
-                    # Complete survey
-                    save_response(st.session_state.current_responses)
-                    st.session_state.survey_step = 'completed'
-                st.rerun()
+                    if save_response(st.session_state.current_responses):
+                        st.session_state.survey_step = 'completed'
+                        st.rerun()
+                    else:
+                        error_placeholder.error("Unable to save your responses. Please try again.")
+
+
+def show_participant_info():
+    """Show participant information form."""
+    st.header("Participant Information")
+
+    language_choices = [
+        "Select a language",
+        "Malayalam",
+        "Tamil",
+        "Hindi",
+        "None / Not applicable"
+    ]
+
+    with st.form("participant_form"):
+        age = st.number_input("Age", min_value=18, max_value=100, value=18)
+        mother_tongue = st.text_input("Mother tongue")
+        competence_choice = st.selectbox(
+            "If you are competent in Malayalam, Tamil, or Hindi, pick the one you know best (choose your mother tongue if listed). Otherwise select 'None / Not applicable'.",
+            options=language_choices,
+            index=0
+        )
+
+        submit = st.form_submit_button("Start Survey", type="primary")
+
+    if submit:
+        if not mother_tongue.strip():
+            st.error("Please enter your mother tongue.")
+            return
+
+        if competence_choice == "Select a language":
+            st.error("Please choose your level of competence among the listed languages.")
+            return
+
+        participant_clips = get_participant_audio_clips(mother_tongue.strip())
+
+        if not participant_clips:
+            st.error("No audio files found. Please contact the administrator.")
+            return
+
+        participant_id = generate_participant_id()
+        clip_sequence = [details.get('file_name') or os.path.basename(details['file']) for details in participant_clips.values()]
+
+        st.session_state.participant_audio_clips = participant_clips
+        st.session_state.current_responses = {
+            'participant_id': participant_id,
+            'age': int(age) if age else None,
+            'mother_tongue': mother_tongue.strip(),
+            'language_competence': competence_choice,
+            'clip_sequence': clip_sequence,
+            'clips': {}
+        }
+        st.session_state.current_clip = 0
+        st.session_state.survey_step = 'clip_survey'
+        st.rerun()
+
 
 def show_completion_page():
-    """Show survey completion page"""
+    """Show survey completion page."""
     st.success("Survey Completed Successfully!")
     st.markdown("Thank you for participating in our research on distinguishing between AI and human newscasters!")
     st.balloons()
-    
+
     if st.button("Take Another Survey"):
-        # Reset session state
+        keys_to_clear = [
+            key for key in list(st.session_state.keys())
+            if key.startswith("clip_") or key.startswith("sortable_") or key.endswith("_ranking_order")
+            or key.startswith("first_choice_") or key.startswith("second_choice_")
+        ]
+        for key in keys_to_clear:
+            del st.session_state[key]
+
         st.session_state.survey_step = 'participant_info'
         st.session_state.current_clip = 0
         st.session_state.current_responses = {}
         st.session_state.participant_audio_clips = {}
         st.rerun()
+
+
+def main():
+    st.markdown('<h1 class="main-header">Distinguishing between AI and Human Newscasters</h1>', unsafe_allow_html=True)
+    st.markdown("**Research Study: How Linguistic Features Affect Perception of AI vs Human Speech**")
+
+    all_files = get_all_audio_files()
+    if not all_files["general"] and not all_files["language_specific"]:
+        st.error("No audio files found in the 'audio' folder. Please add audio files (.mp3, .wav, .m4a, .ogg) to continue.")
+        st.info("Expected audio folder location: `audio/`")
+        return
+
+    if st.session_state.survey_step == 'clip_survey':
+        participant_clips = st.session_state.participant_audio_clips
+        if participant_clips:
+            total_clips = len(participant_clips)
+            progress = st.session_state.current_clip / total_clips if total_clips else 0
+            st.progress(progress, text=f"Audio Clip {st.session_state.current_clip + 1} of {total_clips}")
+
+    if st.session_state.survey_step == 'participant_info':
+        show_participant_info()
+    elif st.session_state.survey_step == 'clip_survey':
+        show_clip_page()
+    elif st.session_state.survey_step == 'completed':
+        show_completion_page()
+
 
 if __name__ == "__main__":
     main()

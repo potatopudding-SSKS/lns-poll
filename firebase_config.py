@@ -74,14 +74,22 @@ class FirebaseService:
             # Add timestamp if not present
             if 'timestamp' not in response_data:
                 response_data['timestamp'] = datetime.now().isoformat()
-            
-            # Generate document ID
-            doc_id = f"{response_data.get('participant_id', 'unknown')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            
-            # Save to 'survey_responses' collection
-            doc_ref = self.db.collection('survey_responses').document(doc_id)
+
+            participant_id = response_data.get('participant_id')
+            if participant_id:
+                normalized_id = participant_id if participant_id.upper().startswith('P') else f"P{participant_id}"
+                response_data['participant_id'] = normalized_id
+            else:
+                next_id = self.get_next_participant_id()
+                if next_id:
+                    normalized_id = f"P{next_id}" if not str(next_id).upper().startswith('P') else str(next_id)
+                    response_data['participant_id'] = normalized_id
+                else:
+                    normalized_id = f"participant_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+            doc_ref = self.db.collection('survey_responses').document(normalized_id)
             doc_ref.set(response_data)
-            
+
             return True
             
         except Exception as e:
@@ -134,6 +142,27 @@ class FirebaseService:
             
         except Exception as e:
             return False
+
+    def get_next_participant_id(self) -> Optional[str]:
+        """Get the next sequential participant id using a transaction."""
+        if not self.is_available():
+            return None
+
+        counter_ref = self.db.collection('metadata').document('counters')
+
+        @firestore.transactional
+        def _increment_counter(transaction):
+            snapshot = counter_ref.get(transaction=transaction)
+            current_value = snapshot.get('participant_counter', 0) if snapshot.exists else 0
+            next_value = current_value + 1
+            transaction.set(counter_ref, {'participant_counter': next_value}, merge=True)
+            return f"{next_value:05d}"
+
+        try:
+            transaction = self.db.transaction()
+            return _increment_counter(transaction)
+        except Exception:
+            return None
 
 # Global instance
 firebase_service = FirebaseService()
