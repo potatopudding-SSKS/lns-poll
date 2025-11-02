@@ -608,9 +608,9 @@ def create_drag_drop_ranking(clip_id):
         )
         
         # Display current ranking
-        st.markdown("**Your Current Ranking:**")
-        for i, item in enumerate(sorted_items):
-            st.markdown(f"**{i+1}. {item}**")
+        # st.markdown("**Your Current Ranking:**")
+        # for i, item in enumerate(sorted_items):
+        #     st.markdown(f"**{i+1}. {item}**")
         
         # Convert to ranking dictionary for processing
         ranking_dict = {}
