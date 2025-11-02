@@ -590,7 +590,7 @@ def create_drag_drop_ranking(clip_id):
     st.markdown("**Which of the following features do you think influenced your opinion the most?**")
     
     # Display feature explanations
-    st.markdown("**Linguistic Feature Definitions:**")
+    # st.markdown("**Linguistic Feature Definitions:**")
     # for feature in LINGUISTIC_FEATURES:
         # if feature in FEATURE_EXPLANATIONS:
         #     st.markdown(f"• **{feature}**: {FEATURE_EXPLANATIONS[feature]}")
