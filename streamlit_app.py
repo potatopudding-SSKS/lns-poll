@@ -1064,7 +1064,7 @@ def show_participant_info():
     ]
 
     with st.form("participant_form"):
-        age = st.number_input("Age", min_value=18, max_value=100, value=18)
+        age = st.number_input("Age", value=18)
         mother_tongue = st.text_input("Mother tongue")
         competence_choice = st.selectbox(
             "If you are competent in Malayalam, Tamil, or Hindi, pick the one you know best (choose your mother tongue if listed). Otherwise select 'None / Not applicable'.",
