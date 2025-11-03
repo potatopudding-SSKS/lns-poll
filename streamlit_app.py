@@ -878,7 +878,7 @@ def create_drag_drop_ranking(clip_id):
     #     if explanation:
     #         st.markdown(f"• **{feature}**: {explanation}")
 
-    st.markdown("---")
+    # st.markdown("---")
     st.markdown("*Drag and drop to rearrange from most influential (top) to least influential (bottom):*")
 
     order_key = f"{clip_id}_ranking_order"
@@ -957,7 +957,7 @@ def render_follow_up_questions(clip_id):
             if value is None:
                 missing.append(f"{feature}: {question['text']}")
 
-        st.markdown("---")
+        # st.markdown("---")
 
     return responses, missing
 
@@ -989,12 +989,12 @@ def show_clip_page():
 
     standard_responses, standard_missing = render_standard_questions(current_clip_id, clip_data)
 
-    st.markdown("---")
+    ## st.markdown("---")
     ranking_dict, top_features = create_drag_drop_ranking(current_clip_id)
 
     # render_message("You will be asked follow-up questions about each linguistic feature.")
 
-    st.markdown("---")
+    # st.markdown("---")
     st.markdown(f'<div class="follow-up-section">', unsafe_allow_html=True)
     # st.subheader("Follow-up Questions")
     # st.markdown("Please answer the following questions about each linguistic feature:")
