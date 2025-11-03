@@ -841,12 +841,10 @@ def generate_participant_id():
     if not next_numeric:
         local_counter = st.session_state.get('local_participant_counter', 0) + 1
         st.session_state.local_participant_counter = local_counter
-        numeric_str = f"{local_counter:05d}"
+        return f"P{local_counter:05d}"
     else:
-        numeric_str = str(next_numeric).lstrip("P")
-        numeric_str = numeric_str.zfill(5)
-
-    return f"P{numeric_str}"
+        # next_numeric is already an integer from the transaction
+        return f"P{next_numeric:05d}"
 
 
 def ensure_slider_default(key, default):

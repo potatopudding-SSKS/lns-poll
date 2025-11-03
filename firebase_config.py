@@ -153,10 +153,10 @@ class FirebaseService:
         @firestore.transactional
         def _increment_counter(transaction):
             snapshot = counter_ref.get(transaction=transaction)
-            current_value = snapshot.get('participant_counter', 0) if snapshot.exists else 0
+            current_value = snapshot.get('last_participant_number', 0) if snapshot.exists else 0
             next_value = current_value + 1
-            transaction.set(counter_ref, {'participant_counter': next_value}, merge=True)
-            return f"{next_value:05d}"
+            transaction.set(counter_ref, {'last_participant_number': next_value}, merge=True)
+            return next_value
 
         try:
             transaction = self.db.transaction()
