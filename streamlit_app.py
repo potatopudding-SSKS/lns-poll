@@ -369,6 +369,23 @@ def apply_theme(theme_name):
         .stRadio > div, .stSelectbox > div, .stTextInput > div {{
             color: {text};
         }}
+
+        .nav-button {{
+            display: flex;
+            width: 100%;
+        }}
+
+        .nav-button-left {{
+            justify-content: flex-start;
+        }}
+
+        .nav-button-right {{
+            justify-content: flex-end;
+        }}
+
+        .nav-button .stButton {{
+            margin: 0;
+        }}
     </style>
     """
 
@@ -996,10 +1013,14 @@ def show_clip_page():
     action_col_left, action_col_spacer, action_col_right = st.columns([1, 0.2, 1])
 
     with action_col_left:
+        st.markdown('<div class="nav-button nav-button-left">', unsafe_allow_html=True)
         previous_clicked = st.button("← Previous Clip", disabled=current_index == 0, key=f"prev_{current_clip_id}")
+        st.markdown('</div>', unsafe_allow_html=True)
 
     with action_col_right:
+        st.markdown('<div class="nav-button nav-button-right">', unsafe_allow_html=True)
         continue_clicked = st.button("Save and Continue →", type="primary", key=f"next_{current_clip_id}")
+        st.markdown('</div>', unsafe_allow_html=True)
 
     if previous_clicked:
         if current_index > 0:
@@ -1007,33 +1028,33 @@ def show_clip_page():
             st.rerun()
 
     if continue_clicked:
-            missing_fields = standard_missing + follow_up_missing
-            if not ranking_dict:
-                missing_fields.append("Feature ranking")
-            if len(top_features) < 2:
-                missing_fields.append("Top feature selection")
+        missing_fields = standard_missing + follow_up_missing
+        if not ranking_dict:
+            missing_fields.append("Feature ranking")
+        if len(top_features) < 2:
+            missing_fields.append("Top feature selection")
 
-            if missing_fields:
-                render_message("Please complete all questions before continuing.", variant="attention", container=error_placeholder)
+        if missing_fields:
+            render_message("Please complete all questions before continuing.", variant="attention", container=error_placeholder)
+        else:
+            clip_payload = {}
+            clip_payload.update(standard_responses)
+            clip_payload.update(follow_up_responses)
+            clip_payload['feature_ranking'] = ranking_dict
+            clip_payload['top_features'] = top_features
+
+            st.session_state.current_responses.setdefault('clips', {})
+            st.session_state.current_responses['clips'][clip_name] = clip_payload
+
+            if current_index < len(clip_ids) - 1:
+                st.session_state.current_clip += 1
+                st.rerun()
             else:
-                clip_payload = {}
-                clip_payload.update(standard_responses)
-                clip_payload.update(follow_up_responses)
-                clip_payload['feature_ranking'] = ranking_dict
-                clip_payload['top_features'] = top_features
-
-                st.session_state.current_responses.setdefault('clips', {})
-                st.session_state.current_responses['clips'][clip_name] = clip_payload
-
-                if current_index < len(clip_ids) - 1:
-                    st.session_state.current_clip += 1
+                if save_response(st.session_state.current_responses):
+                    st.session_state.survey_step = 'completed'
                     st.rerun()
                 else:
-                    if save_response(st.session_state.current_responses):
-                        st.session_state.survey_step = 'completed'
-                        st.rerun()
-                    else:
-                        render_message("Unable to save your responses. Please try again.", variant="attention", container=error_placeholder)
+                    render_message("Unable to save your responses. Please try again.", variant="attention", container=error_placeholder)
 
 
 def show_participant_info():
