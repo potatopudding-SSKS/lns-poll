@@ -690,8 +690,8 @@ def create_audio_clip_dict(file_path, clip_number):
         ]
     }
 
-def get_participant_audio_clips(mother_tongue=None):
-    """Get randomized audio clips for a participant based on their mother tongue"""
+def get_participant_audio_clips(mother_tongue=None, language_competence=None):
+    """Get randomized audio clips for a participant based on their language competence or mother tongue"""
     all_files = get_all_audio_files()
     selected_clips = {}
     clip_counter = 1
@@ -750,9 +750,17 @@ def get_participant_audio_clips(mother_tongue=None):
             selected_clips[clip_id] = create_audio_clip_dict(file_path, clip_counter)
             clip_counter += 1
     
-    # If mother tongue matches a subfolder, add M random clips from that language
-    if mother_tongue and mother_tongue.lower() in all_files["language_specific"]:
-        language_files = all_files["language_specific"][mother_tongue.lower()]
+    # Determine which language to use for language-specific clips
+    # Priority: language_competence (if valid) > mother_tongue
+    target_language = None
+    if language_competence and language_competence not in ["Select a language", "None / Not applicable"]:
+        target_language = language_competence
+    elif mother_tongue:
+        target_language = mother_tongue
+    
+    # If target language matches a subfolder, add M random clips from that language
+    if target_language and target_language.lower() in all_files["language_specific"]:
+        language_files = all_files["language_specific"][target_language.lower()]
         if len(language_files) > 0:
             m_clips = min(M_LANGUAGE_CLIPS, len(language_files))
             selected_language = random.sample(language_files, m_clips)
@@ -1089,7 +1097,10 @@ def show_participant_info():
             render_message("Please choose your level of competence among the listed languages.", variant="attention")
             return
 
-        participant_clips = get_participant_audio_clips(mother_tongue.strip())
+        participant_clips = get_participant_audio_clips(
+            mother_tongue=mother_tongue.strip(),
+            language_competence=competence_choice
+        )
 
         if not participant_clips:
             render_message("No audio files found. Please contact the administrator.", variant="attention")
