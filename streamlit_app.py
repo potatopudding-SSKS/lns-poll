@@ -993,16 +993,20 @@ def show_clip_page():
 
     error_placeholder = st.empty()
 
-    col1, col2 = st.columns([1, 1])
+    action_col_left, action_col_spacer, action_col_right = st.columns([1, 0.2, 1])
 
-    with col1:
-        if st.button("← Previous Clip", disabled=current_index == 0):
-            if current_index > 0:
-                st.session_state.current_clip -= 1
-                st.rerun()
+    with action_col_left:
+        previous_clicked = st.button("← Previous Clip", disabled=current_index == 0, key=f"prev_{current_clip_id}")
 
-    with col2:
-        if st.button("Save and Continue →", type="primary"):
+    with action_col_right:
+        continue_clicked = st.button("Save and Continue →", type="primary", key=f"next_{current_clip_id}")
+
+    if previous_clicked:
+        if current_index > 0:
+            st.session_state.current_clip -= 1
+            st.rerun()
+
+    if continue_clicked:
             missing_fields = standard_missing + follow_up_missing
             if not ranking_dict:
                 missing_fields.append("Feature ranking")
