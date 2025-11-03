@@ -4,6 +4,7 @@ from firebase_admin import credentials, firestore
 import json
 from datetime import datetime
 from typing import List, Dict, Optional
+from uuid import uuid4
 
 class FirebaseService:
     """Firebase service for handling poll data storage and retrieval"""
@@ -78,14 +79,9 @@ class FirebaseService:
             participant_id = response_data.get('participant_id')
             if participant_id:
                 normalized_id = participant_id if participant_id.upper().startswith('P') else f"P{participant_id}"
-                response_data['participant_id'] = normalized_id
             else:
-                next_id = self.get_next_participant_id()
-                if next_id:
-                    normalized_id = f"P{next_id}" if not str(next_id).upper().startswith('P') else str(next_id)
-                    response_data['participant_id'] = normalized_id
-                else:
-                    normalized_id = f"participant_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                normalized_id = f"P{uuid4().hex[:12].upper()}"
+                response_data['participant_id'] = normalized_id
 
             doc_ref = self.db.collection('survey_responses').document(normalized_id)
             doc_ref.set(response_data)

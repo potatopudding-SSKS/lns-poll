@@ -10,6 +10,7 @@ import pickle
 import random
 from copy import deepcopy
 from html import escape
+from uuid import uuid4
 from streamlit_sortables import sort_items
 
 # Configuration variables
@@ -830,21 +831,8 @@ def save_to_google_sheets(response_data):
 
 
 def generate_participant_id():
-    """Generate a sequential participant identifier."""
-    next_numeric = None
-    if firebase_service and firebase_service.is_available():
-        try:
-            next_numeric = firebase_service.get_next_participant_id()
-        except Exception:
-            next_numeric = None
-
-    if not next_numeric:
-        local_counter = st.session_state.get('local_participant_counter', 0) + 1
-        st.session_state.local_participant_counter = local_counter
-        return f"P{local_counter:05d}"
-    else:
-        # next_numeric is already an integer from the transaction
-        return f"P{next_numeric:05d}"
+    """Generate a unique participant identifier."""
+    return f"P{uuid4().hex[:8].upper()}"
 
 
 def ensure_slider_default(key, default):
