@@ -764,8 +764,50 @@ def get_participant_audio_clips(mother_tongue=None, language_competence=None):
         language_files = all_files["language_specific"][target_language.lower()]
         if len(language_files) > 0:
             m_clips = min(M_LANGUAGE_CLIPS, len(language_files))
-            selected_language = random.sample(language_files, m_clips)
-            
+            news_clip_pool = [f for f in language_files if os.path.basename(f).lower().startswith("news_clip_")]
+            news_real_pool = [f for f in language_files if os.path.basename(f).lower().startswith("news_real_")]
+            categorized_files = set(news_clip_pool + news_real_pool)
+            other_lang_pool = [f for f in language_files if f not in categorized_files]
+
+            random.shuffle(news_clip_pool)
+            random.shuffle(news_real_pool)
+            random.shuffle(other_lang_pool)
+
+            clip_quota = m_clips // 2
+            real_quota = m_clips - clip_quota
+            if m_clips % 2 and len(news_clip_pool) > len(news_real_pool):
+                clip_quota, real_quota = real_quota, clip_quota
+
+            selected_language = []
+            clip_selected_count = 0
+            real_selected_count = 0
+
+            clip_take = min(clip_quota, len(news_clip_pool))
+            for _ in range(clip_take):
+                selected_language.append(news_clip_pool.pop())
+                clip_selected_count += 1
+
+            real_take = min(real_quota, len(news_real_pool))
+            for _ in range(real_take):
+                selected_language.append(news_real_pool.pop())
+                real_selected_count += 1
+
+            remaining_slots = m_clips - len(selected_language)
+            while remaining_slots > 0:
+                if news_clip_pool and (clip_selected_count <= real_selected_count or not news_real_pool):
+                    selected_language.append(news_clip_pool.pop())
+                    clip_selected_count += 1
+                elif news_real_pool:
+                    selected_language.append(news_real_pool.pop())
+                    real_selected_count += 1
+                elif other_lang_pool:
+                    selected_language.append(other_lang_pool.pop())
+                else:
+                    break
+                remaining_slots -= 1
+
+            random.shuffle(selected_language)
+
             for file_path in selected_language:
                 clip_id = f"clip_{clip_counter}"
                 selected_clips[clip_id] = create_audio_clip_dict(file_path, clip_counter)
