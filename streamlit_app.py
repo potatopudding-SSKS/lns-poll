@@ -170,6 +170,15 @@ if 'participant_audio_clips' not in st.session_state:
 if 'page_key' not in st.session_state:
     st.session_state.page_key = 0
 
+if 'show_nav_message' not in st.session_state:
+    st.session_state.show_nav_message = False
+
+if 'nav_message_text' not in st.session_state:
+    st.session_state.nav_message_text = ""
+
+if 'nav_message_time' not in st.session_state:
+    st.session_state.nav_message_time = 0
+
 
 THEME_OPTIONS = ["Summery Light", "Vibrant Dark"]
 
@@ -1048,6 +1057,16 @@ def show_clip_page():
         follow_up_responses, follow_up_missing = render_follow_up_questions(current_clip_id)
 
         error_placeholder = st.empty()
+        
+        # Check if we should show navigation message
+        import time
+        current_time = time.time()
+        if st.session_state.show_nav_message and (current_time - st.session_state.nav_message_time < 10):
+            st.markdown(f"**{st.session_state.nav_message_text}**")
+        elif st.session_state.show_nav_message:
+            # Clear message after 10 seconds
+            st.session_state.show_nav_message = False
+            st.session_state.nav_message_text = ""
 
         action_col_left, action_col_spacer, action_col_right = st.columns([1, 0.2, 1])
 
@@ -1065,6 +1084,10 @@ def show_clip_page():
             if current_index > 0:
                 st.session_state.current_clip -= 1
                 st.session_state.page_key += 1
+                st.session_state.show_nav_message = True
+                st.session_state.nav_message_text = "Moving to previous clip. Please scroll to the top to continue."
+                import time
+                st.session_state.nav_message_time = time.time()
                 # Use query params to force navigation and scroll reset
                 st.query_params.clear()
                 st.query_params["clip"] = str(st.session_state.current_clip)
@@ -1103,6 +1126,10 @@ def show_clip_page():
                 if current_index < len(clip_ids) - 1:
                     st.session_state.current_clip += 1
                     st.session_state.page_key += 1
+                    st.session_state.show_nav_message = True
+                    st.session_state.nav_message_text = "Responses saved! Moving to next clip. Please scroll to the top to continue."
+                    import time
+                    st.session_state.nav_message_time = time.time()
                     # Use query params to force navigation and scroll reset
                     st.query_params.clear()
                     st.query_params["clip"] = str(st.session_state.current_clip)
@@ -1111,6 +1138,10 @@ def show_clip_page():
                     if save_response(st.session_state.current_responses):
                         st.session_state.survey_step = 'completed'
                         st.session_state.page_key += 1
+                        st.session_state.show_nav_message = True
+                        st.session_state.nav_message_text = "All responses saved! Completing survey. Please scroll to the top."
+                        import time
+                        st.session_state.nav_message_time = time.time()
                         # Use query params to force navigation and scroll reset
                         st.query_params.clear()
                         st.query_params["step"] = "completed"
