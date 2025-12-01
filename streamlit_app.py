@@ -15,7 +15,7 @@ from streamlit_sortables import sort_items
 
 # Configuration variables
 N_RANDOM_CLIPS = 1  # Number of random clips to show all participants
-M_LANGUAGE_CLIPS = 0  # Number of language-specific clips to show
+M_LANGUAGE_CLIPS = 1  # Number of language-specific clips to show
 
 # Initialize Firebase service with caching
 @st.cache_resource
@@ -1201,7 +1201,7 @@ def show_participant_info():
 
         st.session_state.participant_audio_clips = participant_clips
         st.session_state.current_responses = {
-            'participant_id': "xyz",
+            'participant_id': "temp" + participant_id,
             'age': int(age) if age else None,
             'mother_tongue': mother_tongue.strip(),
             'language_competence': competence_choice,
