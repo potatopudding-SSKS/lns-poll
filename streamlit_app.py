@@ -167,6 +167,9 @@ if 'current_responses' not in st.session_state:
 if 'participant_audio_clips' not in st.session_state:
     st.session_state.participant_audio_clips = {}
 
+if 'scroll_to_top' not in st.session_state:
+    st.session_state.scroll_to_top = False
+
 
 THEME_OPTIONS = ["Summery Light", "Vibrant Dark"]
 
@@ -1084,10 +1087,12 @@ def show_clip_page():
 
             if current_index < len(clip_ids) - 1:
                 st.session_state.current_clip += 1
+                st.session_state.scroll_to_top = True
                 st.rerun()
             else:
                 if save_response(st.session_state.current_responses):
                     st.session_state.survey_step = 'completed'
+                    st.session_state.scroll_to_top = True
                     st.rerun()
                 else:
                     render_message("Unable to save your responses. Please try again.", variant="attention", container=error_placeholder)
@@ -1190,6 +1195,13 @@ def main():
     # if theme_choice != st.session_state.theme_choice:
     #     st.session_state.theme_choice = theme_choice
     # apply_theme(st.session_state.theme_choice)
+
+    if st.session_state.get('scroll_to_top'):
+        st.markdown(
+            "<script>window.scrollTo({top: 0, behavior: 'smooth'});</script>",
+            unsafe_allow_html=True
+        )
+        st.session_state.scroll_to_top = False
 
     st.markdown('<h1 class="main-header">Distinguishing between AI and Human Newscasters</h1>', unsafe_allow_html=True)
     st.markdown("**Research Study: How Linguistic Features Affect Perception of AI vs Human Speech**")
