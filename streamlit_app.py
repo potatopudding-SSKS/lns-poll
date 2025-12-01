@@ -1006,6 +1006,20 @@ def render_follow_up_questions(clip_id):
 
 def show_clip_page():
     """Render the full survey for the current clip on a single scrollable page."""
+    # Inject scroll-to-top script that runs after page fully loads
+    import streamlit.components.v1 as components
+    components.html("""
+        <script>
+        window.addEventListener('load', function() {
+            // Wait for full page load, then aggressively scroll to top
+            setTimeout(function() {
+                window.parent.document.documentElement.scrollTop = 0;
+                window.parent.document.body.scrollTop = 0;
+            }, 10);
+        });
+        </script>
+    """, height=0)
+    
     participant_clips = st.session_state.participant_audio_clips
 
     if not participant_clips:
