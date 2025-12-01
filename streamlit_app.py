@@ -180,7 +180,7 @@ SCROLL_TO_TOP_SCRIPT = """
             return;
         }
         try {
-            target.scrollTo({ top: 0, behavior: 'auto' });
+            target.scrollTo(0, 0);
             // setTimeout(() => target.scrollTo({ top: 0, behavior: 'auto' }), 120);
         } catch (err) {
             // Ignore scroll errors
