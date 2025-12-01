@@ -914,61 +914,59 @@ def render_standard_questions(clip_id, clip_data):
 
 
 def create_drag_drop_ranking(clip_id):
-    """Create drag and drop ranking interface using streamlit-sortables."""
+    """Create mobile-friendly ranking interface using dropdowns."""
     st.markdown("**Which of the following features do you think influenced your opinion the most?**")
-
-    # st.markdown("**Linguistic Feature Definitions:**")
-    # for feature in LINGUISTIC_FEATURES:
-    #     explanation = FEATURE_EXPLANATIONS.get(feature)
-    #     if explanation:
-    #         st.markdown(f"• **{feature}**: {explanation}")
-
-    # st.markdown("---")
-    st.markdown("*Drag and drop to rearrange from most influential (top) to least influential (bottom):*")
-
-    order_key = f"{clip_id}_ranking_order"
-    initial_items = st.session_state.get(order_key, list(LINGUISTIC_FEATURES))
-
-    try:
-        sorted_items = sort_items(
-            initial_items,
-            direction="vertical",
-            key=f"sortable_{clip_id}",
-            multi_containers=False
+    st.markdown("*Rank each feature from 1 (most influential) to 5 (least influential):*")
+    
+    # Initialize ranking state if not exists
+    ranking_state_key = f"{clip_id}_ranking_state"
+    if ranking_state_key not in st.session_state:
+        st.session_state[ranking_state_key] = {feature: None for feature in LINGUISTIC_FEATURES}
+    
+    ranking_selections = {}
+    rank_options = [1, 2, 3, 4, 5]
+    
+    # Create a selectbox for each feature
+    for feature in LINGUISTIC_FEATURES:
+        selection_key = f"{clip_id}_rank_{normalize_feature_key(feature)}"
+        
+        # Get currently selected rank for this feature
+        current_rank = st.session_state[ranking_state_key].get(feature)
+        default_index = rank_options.index(current_rank) if current_rank in rank_options else 0
+        
+        selected_rank = st.selectbox(
+            f"{feature}",
+            options=rank_options,
+            index=default_index,
+            key=selection_key,
+            format_func=lambda x: f"Rank {x}"
         )
-        st.session_state[order_key] = sorted_items
-
-        # st.markdown("**Your Current Ranking:**")
-        # for index, item in enumerate(sorted_items):
-        #     st.markdown(f"**{index + 1}. {item}**")
-
-        ranking_dict = {feature: idx + 1 for idx, feature in enumerate(sorted_items)}
-        return ranking_dict, sorted_items[:2]
-
-    except Exception:
-        render_message("Drag-and-drop is temporarily unavailable. Please use the manual selectors.", variant="attention")
-        st.markdown("**Using manual ranking instead:**")
-
-        first_choice = st.selectbox(
-            "Most influential feature:",
-            options=LINGUISTIC_FEATURES,
-            key=f"first_choice_{clip_id}"
-        )
-
-        remaining_features = [f for f in LINGUISTIC_FEATURES if f != first_choice]
-        second_choice = st.selectbox(
-            "Second most influential feature:",
-            options=remaining_features,
-            key=f"second_choice_{clip_id}"
-        )
-
-        ranking_dict = {first_choice: 1, second_choice: 2}
-        for idx, feature in enumerate(LINGUISTIC_FEATURES):
-            if feature not in ranking_dict:
-                ranking_dict[feature] = idx + 3
-
-        st.session_state[order_key] = [first_choice, second_choice] + [f for f in LINGUISTIC_FEATURES if f not in {first_choice, second_choice}]
-        return ranking_dict, [first_choice, second_choice]
+        
+        ranking_selections[feature] = selected_rank
+        st.session_state[ranking_state_key][feature] = selected_rank
+    
+    # Check for duplicate rankings
+    rank_counts = {}
+    for feature, rank in ranking_selections.items():
+        if rank not in rank_counts:
+            rank_counts[rank] = []
+        rank_counts[rank].append(feature)
+    
+    # Show warning if there are duplicates
+    duplicates = {rank: features for rank, features in rank_counts.items() if len(features) > 1}
+    if duplicates:
+        dup_messages = []
+        for rank, features in duplicates.items():
+            dup_messages.append(f"Rank {rank}: {', '.join([f.split(' - ')[0] for f in features])}")
+        render_message(f"⚠️ Please assign different ranks to each feature. Duplicate rankings: {'; '.join(dup_messages)}", variant="attention")
+        return {}, []
+    
+    # Create ranking dict and get top features
+    ranking_dict = ranking_selections
+    sorted_features = sorted(ranking_selections.items(), key=lambda x: x[1])
+    top_features = [feat for feat, rank in sorted_features[:2]]
+    
+    return ranking_dict, top_features
 
 
 def render_follow_up_questions(clip_id):
