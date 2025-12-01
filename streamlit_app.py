@@ -171,6 +171,26 @@ if 'scroll_to_top' not in st.session_state:
     st.session_state.scroll_to_top = False
 
 
+SCROLL_TO_TOP_SCRIPT = """
+<script>
+(function() {
+    const scrollTargets = [window, window.parent];
+    scrollTargets.forEach(target => {
+        if (!target || typeof target.scrollTo !== 'function') {
+            return;
+        }
+        try {
+            target.scrollTo({ top: 0, behavior: 'auto' });
+            setTimeout(() => target.scrollTo({ top: 0, behavior: 'auto' }), 120);
+        } catch (err) {
+            // Ignore scroll errors
+        }
+    });
+})();
+</script>
+"""
+
+
 THEME_OPTIONS = ["Summery Light", "Vibrant Dark"]
 
 THEME_PALETTES = {
@@ -1063,6 +1083,7 @@ def show_clip_page():
 
     if previous_clicked:
         if current_index > 0:
+            st.session_state.scroll_to_top = True
             st.session_state.current_clip -= 1
             st.rerun()
 
@@ -1197,10 +1218,7 @@ def main():
     # apply_theme(st.session_state.theme_choice)
 
     if st.session_state.get('scroll_to_top'):
-        st.markdown(
-            "<script>window.scrollTo({top: 0, behavior: 'smooth'});</script>",
-            unsafe_allow_html=True
-        )
+        st.markdown(SCROLL_TO_TOP_SCRIPT, unsafe_allow_html=True)
         st.session_state.scroll_to_top = False
 
     st.markdown('<h1 class="main-header">Distinguishing between AI and Human Newscasters</h1>', unsafe_allow_html=True)
