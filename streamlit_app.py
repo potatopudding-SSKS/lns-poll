@@ -207,10 +207,11 @@ SCROLL_TO_TOP_SCRIPT = """
     
     // Execute again after a short delay to ensure it works after render
     setTimeout(scrollToTop, 100);
-    setTimeout(scrollToTop, 110);
     setTimeout(scrollToTop, 120);
-    setTimeout(scrollToTop, 130);
     setTimeout(scrollToTop, 140);
+    setTimeout(scrollToTop, 160);
+    setTimeout(scrollToTop, 180);
+    setTimeout(scrollToTop, 200);
 })();
 </script>
 """
