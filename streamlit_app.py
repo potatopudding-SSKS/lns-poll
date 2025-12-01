@@ -197,7 +197,7 @@ SCROLL_TO_TOP_SCRIPT = """
         try {
             const firstElement = document.body.firstElementChild;
             if (firstElement) {
-                firstElement.scrollIntoView({ behavior: 'auto', block: 'start' });
+                firstElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         } catch(e) {}
     }
