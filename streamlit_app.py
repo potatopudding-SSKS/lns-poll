@@ -181,7 +181,7 @@ SCROLL_TO_TOP_SCRIPT = """
         }
         try {
             target.scrollTo({ top: 0, behavior: 'auto' });
-            setTimeout(() => target.scrollTo({ top: 0, behavior: 'auto' }), 120);
+            // setTimeout(() => target.scrollTo({ top: 0, behavior: 'auto' }), 120);
         } catch (err) {
             // Ignore scroll errors
         }
