@@ -167,6 +167,9 @@ if 'current_responses' not in st.session_state:
 if 'participant_audio_clips' not in st.session_state:
     st.session_state.participant_audio_clips = {}
 
+if 'page_key' not in st.session_state:
+    st.session_state.page_key = 0
+
 
 THEME_OPTIONS = ["Summery Light", "Vibrant Dark"]
 
@@ -1006,100 +1009,105 @@ def render_follow_up_questions(clip_id):
 
 def show_clip_page():
     """Render the full survey for the current clip on a single scrollable page."""
-    participant_clips = st.session_state.participant_audio_clips
+    # Use a container with key based on page_key to force complete re-render
+    with st.container(key=f"clip_container_{st.session_state.page_key}"):
+        participant_clips = st.session_state.participant_audio_clips
 
-    if not participant_clips:
-        render_message("No audio clips assigned. Please restart the survey.", variant="attention")
-        return
+        if not participant_clips:
+            render_message("No audio clips assigned. Please restart the survey.", variant="attention")
+            return
 
-    clip_ids = list(participant_clips.keys())
-    current_index = st.session_state.current_clip
-    current_clip_id = clip_ids[current_index]
-    clip_data = participant_clips[current_clip_id]
-    clip_name = clip_data.get('file_name') or os.path.basename(clip_data['file'])
+        clip_ids = list(participant_clips.keys())
+        current_index = st.session_state.current_clip
+        current_clip_id = clip_ids[current_index]
+        clip_data = participant_clips[current_clip_id]
+        clip_name = clip_data.get('file_name') or os.path.basename(clip_data['file'])
 
-    st.markdown(f'<div class="audio-section">', unsafe_allow_html=True)
-    st.subheader(f"{clip_data['title']}")
+        st.markdown(f'<div class="audio-section">', unsafe_allow_html=True)
+        st.subheader(f"{clip_data['title']}")
 
-    if os.path.exists(clip_data['file']):
-        st.audio(clip_data['file'])
-    else:
-        render_message(f"Audio file not found: {clip_data['file']}", variant="attention")
-
-    st.markdown("**Please listen to the audio clip above and answer the following questions:**")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    standard_responses, standard_missing = render_standard_questions(current_clip_id, clip_data)
-
-    ## st.markdown("---")
-    ranking_dict, top_features = create_drag_drop_ranking(current_clip_id)
-
-    # render_message("You will be asked follow-up questions about each linguistic feature.")
-
-    # st.markdown("---")
-    st.markdown(f'<div class="follow-up-section">', unsafe_allow_html=True)
-    # st.subheader("Follow-up Questions")
-    # st.markdown("Please answer the following questions about each linguistic feature:")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    follow_up_responses, follow_up_missing = render_follow_up_questions(current_clip_id)
-
-    error_placeholder = st.empty()
-
-    action_col_left, action_col_spacer, action_col_right = st.columns([1, 0.2, 1])
-
-    with action_col_left:
-        st.markdown('<div class="nav-button nav-button-left">', unsafe_allow_html=True)
-        previous_clicked = st.button("← Previous Clip", disabled=current_index == 0, key=f"prev_{current_clip_id}")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with action_col_right:
-        st.markdown('<div class="nav-button nav-button-right">', unsafe_allow_html=True)
-        continue_clicked = st.button("Save and Continue →", type="primary", key=f"next_{current_clip_id}")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    if previous_clicked:
-        if current_index > 0:
-            st.session_state.current_clip -= 1
-            # Use query params to force navigation and scroll reset
-            st.query_params.clear()
-            st.query_params["clip"] = str(st.session_state.current_clip)
-            st.rerun()
-
-    if continue_clicked:
-        missing_fields = standard_missing + follow_up_missing
-        if not ranking_dict:
-            missing_fields.append("Feature ranking")
-        if len(top_features) < 2:
-            missing_fields.append("Top feature selection")
-
-        if missing_fields:
-            render_message("Please complete all questions before continuing.", variant="attention", container=error_placeholder)
+        if os.path.exists(clip_data['file']):
+            st.audio(clip_data['file'])
         else:
-            clip_payload = {}
-            clip_payload.update(standard_responses)
-            clip_payload.update(follow_up_responses)
-            clip_payload['feature_ranking'] = ranking_dict
-            clip_payload['top_features'] = top_features
+            render_message(f"Audio file not found: {clip_data['file']}", variant="attention")
 
-            st.session_state.current_responses.setdefault('clips', {})
-            st.session_state.current_responses['clips'][clip_name] = clip_payload
+        st.markdown("**Please listen to the audio clip above and answer the following questions:**")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-            if current_index < len(clip_ids) - 1:
-                st.session_state.current_clip += 1
+        standard_responses, standard_missing = render_standard_questions(current_clip_id, clip_data)
+
+        ## st.markdown("---")
+        ranking_dict, top_features = create_drag_drop_ranking(current_clip_id)
+
+        # render_message("You will be asked follow-up questions about each linguistic feature.")
+
+        # st.markdown("---")
+        st.markdown(f'<div class="follow-up-section">', unsafe_allow_html=True)
+        # st.subheader("Follow-up Questions")
+        # st.markdown("Please answer the following questions about each linguistic feature:")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        follow_up_responses, follow_up_missing = render_follow_up_questions(current_clip_id)
+
+        error_placeholder = st.empty()
+
+        action_col_left, action_col_spacer, action_col_right = st.columns([1, 0.2, 1])
+
+        with action_col_left:
+            st.markdown('<div class="nav-button nav-button-left">', unsafe_allow_html=True)
+            previous_clicked = st.button("← Previous Clip", disabled=current_index == 0, key=f"prev_{current_clip_id}")
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        with action_col_right:
+            st.markdown('<div class="nav-button nav-button-right">', unsafe_allow_html=True)
+            continue_clicked = st.button("Save and Continue →", type="primary", key=f"next_{current_clip_id}")
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        if previous_clicked:
+            if current_index > 0:
+                st.session_state.current_clip -= 1
+                st.session_state.page_key += 1
                 # Use query params to force navigation and scroll reset
                 st.query_params.clear()
                 st.query_params["clip"] = str(st.session_state.current_clip)
                 st.rerun()
+
+        if continue_clicked:
+            missing_fields = standard_missing + follow_up_missing
+            if not ranking_dict:
+                missing_fields.append("Feature ranking")
+            if len(top_features) < 2:
+                missing_fields.append("Top feature selection")
+
+            if missing_fields:
+                render_message("Please complete all questions before continuing.", variant="attention", container=error_placeholder)
             else:
-                if save_response(st.session_state.current_responses):
-                    st.session_state.survey_step = 'completed'
+                clip_payload = {}
+                clip_payload.update(standard_responses)
+                clip_payload.update(follow_up_responses)
+                clip_payload['feature_ranking'] = ranking_dict
+                clip_payload['top_features'] = top_features
+
+                st.session_state.current_responses.setdefault('clips', {})
+                st.session_state.current_responses['clips'][clip_name] = clip_payload
+
+                if current_index < len(clip_ids) - 1:
+                    st.session_state.current_clip += 1
+                    st.session_state.page_key += 1
                     # Use query params to force navigation and scroll reset
                     st.query_params.clear()
-                    st.query_params["step"] = "completed"
+                    st.query_params["clip"] = str(st.session_state.current_clip)
                     st.rerun()
                 else:
-                    render_message("Unable to save your responses. Please try again.", variant="attention", container=error_placeholder)
+                    if save_response(st.session_state.current_responses):
+                        st.session_state.survey_step = 'completed'
+                        st.session_state.page_key += 1
+                        # Use query params to force navigation and scroll reset
+                        st.query_params.clear()
+                        st.query_params["step"] = "completed"
+                        st.rerun()
+                    else:
+                        render_message("Unable to save your responses. Please try again.", variant="attention", container=error_placeholder)
 
 
 def show_participant_info():
