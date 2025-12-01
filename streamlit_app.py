@@ -174,18 +174,40 @@ if 'scroll_to_top' not in st.session_state:
 SCROLL_TO_TOP_SCRIPT = """
 <script>
 (function() {
-    const scrollTargets = [window, window.parent];
-    scrollTargets.forEach(target => {
-        if (!target || typeof target.scrollTo !== 'function') {
-            return;
-        }
+    function scrollToTop() {
+        // Try scrolling the window
+        try { window.scrollTo(0, 0); } catch(e) {}
+        
+        // Try scrolling the parent window (Streamlit iframe)
+        try { window.parent.scrollTo(0, 0); } catch(e) {}
+        
+        // Try scrolling the document body and html
         try {
-            target.scrollTo(0, 0);
-            // setTimeout(() => target.scrollTo({ top: 0, behavior: 'auto' }), 120);
-        } catch (err) {
-            // Ignore scroll errors
-        }
-    });
+            document.body.scrollTop = 0;
+            document.documentElement.scrollTop = 0;
+        } catch(e) {}
+        
+        // Try parent document
+        try {
+            window.parent.document.body.scrollTop = 0;
+            window.parent.document.documentElement.scrollTop = 0;
+        } catch(e) {}
+        
+        // Try scrollIntoView on first element
+        try {
+            const firstElement = document.body.firstElementChild;
+            if (firstElement) {
+                firstElement.scrollIntoView({ behavior: 'auto', block: 'start' });
+            }
+        } catch(e) {}
+    }
+    
+    // Execute immediately
+    scrollToTop();
+    
+    // Execute again after a short delay to ensure it works after render
+    setTimeout(scrollToTop, 100);
+    setTimeout(scrollToTop, 300);
 })();
 </script>
 """
