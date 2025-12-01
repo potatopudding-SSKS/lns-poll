@@ -167,54 +167,8 @@ if 'current_responses' not in st.session_state:
 if 'participant_audio_clips' not in st.session_state:
     st.session_state.participant_audio_clips = {}
 
-if 'scroll_to_top' not in st.session_state:
-    st.session_state.scroll_to_top = False
-
-
-SCROLL_TO_TOP_SCRIPT = """
-<script>
-(function() {
-    function scrollToTop() {
-        // Try scrolling the window
-        try { window.scrollTo(0, 0); } catch(e) {}
-        
-        // Try scrolling the parent window (Streamlit iframe)
-        try { window.parent.scrollTo(0, 0); } catch(e) {}
-        
-        // Try scrolling the document body and html
-        try {
-            document.body.scrollTop = 0;
-            document.documentElement.scrollTop = 0;
-        } catch(e) {}
-        
-        // Try parent document
-        try {
-            window.parent.document.body.scrollTop = 0;
-            window.parent.document.documentElement.scrollTop = 0;
-        } catch(e) {}
-        
-        // Try scrollIntoView on first element
-        try {
-            const firstElement = document.body.firstElementChild;
-            if (firstElement) {
-                firstElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        } catch(e) {}
-    }
-    
-    // Execute immediately
-    scrollToTop();
-    
-    // Execute again after a short delay to ensure it works after render
-    setTimeout(scrollToTop, 100);
-    setTimeout(scrollToTop, 120);
-    setTimeout(scrollToTop, 140);
-    setTimeout(scrollToTop, 160);
-    setTimeout(scrollToTop, 180);
-    setTimeout(scrollToTop, 200);
-})();
-</script>
-"""
+if 'scroll_trigger' not in st.session_state:
+    st.session_state.scroll_trigger = 0
 
 
 THEME_OPTIONS = ["Summery Light", "Vibrant Dark"]
@@ -1109,8 +1063,8 @@ def show_clip_page():
 
     if previous_clicked:
         if current_index > 0:
-            st.session_state.scroll_to_top = True
             st.session_state.current_clip -= 1
+            st.session_state.scroll_trigger += 1
             st.rerun()
 
     if continue_clicked:
@@ -1134,12 +1088,12 @@ def show_clip_page():
 
             if current_index < len(clip_ids) - 1:
                 st.session_state.current_clip += 1
-                st.session_state.scroll_to_top = True
+                st.session_state.scroll_trigger += 1
                 st.rerun()
             else:
                 if save_response(st.session_state.current_responses):
                     st.session_state.survey_step = 'completed'
-                    st.session_state.scroll_to_top = True
+                    st.session_state.scroll_trigger += 1
                     st.rerun()
                 else:
                     render_message("Unable to save your responses. Please try again.", variant="attention", container=error_placeholder)
@@ -1243,9 +1197,58 @@ def main():
     #     st.session_state.theme_choice = theme_choice
     # apply_theme(st.session_state.theme_choice)
 
-    if st.session_state.get('scroll_to_top'):
-        st.markdown(SCROLL_TO_TOP_SCRIPT, unsafe_allow_html=True)
-        st.session_state.scroll_to_top = False
+    # Force scroll to top using HTML component with aggressive parent iframe targeting
+    import streamlit.components.v1 as components
+    scroll_html = f"""
+    <script>
+    (function() {{
+        var scrollCount = 0;
+        var maxScrolls = 20;
+        
+        function forceScroll() {{
+            if (scrollCount++ >= maxScrolls) return;
+            
+            // Method 1: Direct window scroll
+            window.scrollTo({{top: 0, left: 0, behavior: 'instant'}});
+            
+            // Method 2: Parent window scroll (Streamlit iframe)
+            if (window.parent && window.parent !== window) {{
+                window.parent.scrollTo({{top: 0, left: 0, behavior: 'instant'}});
+            }}
+            
+            // Method 3: Document element scroll
+            if (document.documentElement) {{
+                document.documentElement.scrollTop = 0;
+                document.documentElement.scrollLeft = 0;
+            }}
+            
+            // Method 4: Body scroll
+            if (document.body) {{
+                document.body.scrollTop = 0;
+                document.body.scrollLeft = 0;
+            }}
+            
+            // Method 5: Parent document scroll
+            try {{
+                if (window.parent && window.parent.document) {{
+                    window.parent.document.documentElement.scrollTop = 0;
+                    window.parent.document.body.scrollTop = 0;
+                }}
+            }} catch(e) {{}}
+            
+            // Schedule next scroll
+            if (scrollCount < maxScrolls) {{
+                setTimeout(forceScroll, 50);
+            }}
+        }}
+        
+        // Start scrolling immediately and repeatedly
+        forceScroll();
+    }})();
+    </script>
+    <div style="height:1px"></div>
+    """
+    components.html(scroll_html, height=0)
 
     st.markdown('<h1 class="main-header">Distinguishing between AI and Human Newscasters</h1>', unsafe_allow_html=True)
     st.markdown("**Research Study: How Linguistic Features Affect Perception of AI vs Human Speech**")
