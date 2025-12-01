@@ -1201,7 +1201,7 @@ def show_participant_info():
 
         st.session_state.participant_audio_clips = participant_clips
         st.session_state.current_responses = {
-            'participant_id': participant_id,
+            'participant_id': "xyz",
             'age': int(age) if age else None,
             'mother_tongue': mother_tongue.strip(),
             'language_competence': competence_choice,
