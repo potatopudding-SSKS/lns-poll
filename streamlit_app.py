@@ -1071,14 +1071,25 @@ def show_clip_page():
                 st.rerun()
 
         if continue_clicked:
-            missing_fields = standard_missing + follow_up_missing
+            error_messages = []
+            
+            # Check standard questions
+            if standard_missing:
+                error_messages.append(f"⚠️ **Incomplete questions:** Please answer all rating questions ({len(standard_missing)} remaining)")
+            
+            # Check follow-up questions
+            if follow_up_missing:
+                error_messages.append(f"⚠️ **Incomplete follow-up questions:** Please answer all linguistic feature questions ({len(follow_up_missing)} remaining)")
+            
+            # Check ranking
             if not ranking_dict:
-                missing_fields.append("Feature ranking")
-            if len(top_features) < 2:
-                missing_fields.append("Top feature selection")
+                error_messages.append("⚠️ **Feature ranking incomplete:** Please assign a unique rank (1-5) to each linguistic feature")
+            elif len(top_features) < 2:
+                error_messages.append("⚠️ **Duplicate rankings detected:** Please ensure each linguistic feature has a different rank")
 
-            if missing_fields:
-                render_message("Please complete all questions before continuing.", variant="attention", container=error_placeholder)
+            if error_messages:
+                for msg in error_messages:
+                    render_message(msg, variant="attention", container=error_placeholder)
             else:
                 clip_payload = {}
                 clip_payload.update(standard_responses)
