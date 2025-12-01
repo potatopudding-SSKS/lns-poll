@@ -1062,11 +1062,16 @@ def show_clip_page():
         import time
         current_time = time.time()
         if st.session_state.show_nav_message and (current_time - st.session_state.nav_message_time < 10):
-            st.markdown(f'<p style="color: #f34c4a; font-size: 1.3rem; font-weight: 600;">{st.session_state.nav_message_text}</p>', unsafe_allow_html=True)
-        elif st.session_state.show_nav_message:
-            # Clear message after 10 seconds
-            st.session_state.show_nav_message = False
-            st.session_state.nav_message_text = ""
+            message_html = f'''
+            <p id="nav-message" style="color: #f34c4a; font-size: 1.3rem; font-weight: 600;">{st.session_state.nav_message_text}</p>
+            <script>
+            setTimeout(function() {{
+                var msg = document.getElementById('nav-message');
+                if (msg) msg.style.display = 'none';
+            }}, 10000);
+            </script>
+            '''
+            st.markdown(message_html, unsafe_allow_html=True)
 
         action_col_left, action_col_spacer, action_col_right = st.columns([1, 0.2, 1])
 
