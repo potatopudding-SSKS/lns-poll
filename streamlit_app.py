@@ -1236,25 +1236,6 @@ def show_completion_page():
 
 
 def main():
-    # Add scroll reset using img tag onload hack
-    scroll_js = """
-    <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" 
-         onload="
-         (function(){
-             var scrollToTop = function() {
-                 try { window.parent.scrollTo(0, 0); } catch(e) {}
-                 try { window.parent.document.documentElement.scrollTop = 0; } catch(e) {}
-                 try { window.parent.document.body.scrollTop = 0; } catch(e) {}
-             };
-             scrollToTop();
-             setTimeout(scrollToTop, 50);
-             setTimeout(scrollToTop, 150);
-             setTimeout(scrollToTop, 300);
-         })();
-         " style="display:none;">
-    """
-    st.markdown(scroll_js, unsafe_allow_html=True)
-    
     # if 'theme_choice' not in st.session_state:
     #     st.session_state.theme_choice = THEME_OPTIONS[0]
 
