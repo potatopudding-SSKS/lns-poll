@@ -179,6 +179,9 @@ if 'nav_message_text' not in st.session_state:
 if 'nav_message_time' not in st.session_state:
     st.session_state.nav_message_time = 0
 
+if 'last_restored_clip' not in st.session_state:
+    st.session_state.last_restored_clip = None
+
 
 THEME_OPTIONS = ["Summery Light", "Vibrant Dark"]
 
@@ -1030,8 +1033,12 @@ def show_clip_page():
         clip_data = participant_clips[current_clip_id]
         clip_name = clip_data.get('file_name') or os.path.basename(clip_data['file'])
 
-        # Restore previous responses if they exist (for backward navigation)
-        if clip_name in st.session_state.current_responses.get('clips', {}):
+        # Restore previous responses if they exist (only once per clip visit)
+        # This allows users to modify their answers on re-visit
+        restoration_key = f"{current_clip_id}_{st.session_state.page_key}"
+        if (clip_name in st.session_state.current_responses.get('clips', {}) and 
+            st.session_state.last_restored_clip != restoration_key):
+            
             saved_responses = st.session_state.current_responses['clips'][clip_name]
             
             # Restore standard question responses
@@ -1053,6 +1060,9 @@ def show_clip_page():
             if 'feature_ranking' in saved_responses:
                 ranking_state_key = f"{current_clip_id}_ranking_state"
                 st.session_state[ranking_state_key] = saved_responses['feature_ranking']
+            
+            # Mark this clip as restored for this visit
+            st.session_state.last_restored_clip = restoration_key
 
         st.markdown(f'<div class="audio-section">', unsafe_allow_html=True)
         st.subheader(f"{clip_data['title']}")
