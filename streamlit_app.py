@@ -1030,6 +1030,30 @@ def show_clip_page():
         clip_data = participant_clips[current_clip_id]
         clip_name = clip_data.get('file_name') or os.path.basename(clip_data['file'])
 
+        # Restore previous responses if they exist (for backward navigation)
+        if clip_name in st.session_state.current_responses.get('clips', {}):
+            saved_responses = st.session_state.current_responses['clips'][clip_name]
+            
+            # Restore standard question responses
+            for question in clip_data.get('questions', []):
+                slider_key = f"{current_clip_id}_{question['id']}"
+                if question['id'] in saved_responses:
+                    st.session_state[slider_key] = saved_responses[question['id']]
+            
+            # Restore follow-up question responses
+            for feature_name in FOLLOW_UP_QUESTIONS.keys():
+                feature_key = normalize_feature_key(feature_name)
+                for question in FOLLOW_UP_QUESTIONS[feature_name]:
+                    slider_key = f"{current_clip_id}_{feature_key}_{question['id']}"
+                    response_key = f"{feature_key}_{question['id']}"
+                    if response_key in saved_responses:
+                        st.session_state[slider_key] = saved_responses[response_key]
+            
+            # Restore ranking state
+            if 'feature_ranking' in saved_responses:
+                ranking_state_key = f"{current_clip_id}_ranking_state"
+                st.session_state[ranking_state_key] = saved_responses['feature_ranking']
+
         st.markdown(f'<div class="audio-section">', unsafe_allow_html=True)
         st.subheader(f"{clip_data['title']}")
 
