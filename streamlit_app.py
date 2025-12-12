@@ -967,7 +967,7 @@ def create_drag_drop_ranking(clip_id):
         dup_messages = []
         for rank, features in duplicates.items():
             dup_messages.append(f"Rank {rank}: {', '.join([f.split(' - ')[0] for f in features])}")
-        render_message(f"⚠️ Please assign different ranks to each feature. Duplicate rankings: {'; '.join(dup_messages)}", variant="attention")
+        st.markdown(f"<div class='notice-attention' style='font-weight: 700;'>⚠️ Please assign different ranks to each feature. Duplicate rankings: {'; '.join(dup_messages)}</div>", unsafe_allow_html=True)
         return {}, []
     
     # Create ranking dict and get top features
