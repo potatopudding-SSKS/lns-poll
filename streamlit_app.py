@@ -12,6 +12,7 @@ from copy import deepcopy
 from html import escape
 from uuid import uuid4
 from streamlit_sortables import sort_items
+from streamlit_scroll_to_top import scroll_to_here
 
 # Configuration variables
 N_RANDOM_CLIPS = 4  # Number of random clips to show all participants
@@ -1020,7 +1021,18 @@ def render_follow_up_questions(clip_id):
 def show_clip_page():
     """Render the full survey for the current clip on a single scrollable page."""
     # Use a container with key based on page_key to force complete re-render
+
+    if 'scroll_to_top' not in st.session_state:
+        st.session_state.scroll_to_top = False
+
+    if 'scroll_to_header' not in st.session_state:
+        st.session_state.scroll_to_header = False
+
     with st.container(key=f"clip_container_{st.session_state.page_key}"):
+        if st.session_state.scroll_to_top:
+            scroll_to_here(0, key='top')
+            st.session_state.scroll_to_top = False
+
         participant_clips = st.session_state.participant_audio_clips
 
         if not participant_clips:
@@ -1125,6 +1137,7 @@ def show_clip_page():
                 st.session_state.page_key += 1
                 st.session_state.show_nav_message = True
                 st.session_state.nav_message_text = "Moving to previous clip. Please scroll to the top to continue."
+                st.session_state.scroll_to_top = True
                 import time
                 st.session_state.nav_message_time = time.time()
                 # Use query params to force navigation and scroll reset
@@ -1167,6 +1180,7 @@ def show_clip_page():
                     st.session_state.page_key += 1
                     st.session_state.show_nav_message = True
                     st.session_state.nav_message_text = "Responses saved! Moving to next clip. Please scroll to the top to continue."
+                    st.session_state.scroll_to_top = True
                     import time
                     st.session_state.nav_message_time = time.time()
                     # Use query params to force navigation and scroll reset
@@ -1179,6 +1193,7 @@ def show_clip_page():
                         st.session_state.page_key += 1
                         st.session_state.show_nav_message = True
                         st.session_state.nav_message_text = "All responses saved! Completing survey. Please scroll to the top."
+                        st.session_state.scroll_to_top = True
                         import time
                         st.session_state.nav_message_time = time.time()
                         # Use query params to force navigation and scroll reset
